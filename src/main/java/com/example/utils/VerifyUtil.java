@@ -18,7 +18,7 @@ public class VerifyUtil {
     // 默认字符数量
     private static final int DEFAULT_SIZE = 4;
     // 默认干扰线数量
-    private static final int DEFAULT_LINES = 10;
+    private static final int DEFAULT_LINES = 5;
     // 默认宽度
     private static final int DEFAULT_WIDTH = 80;
     // 默认高度

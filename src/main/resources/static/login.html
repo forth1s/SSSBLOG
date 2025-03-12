@@ -5,30 +5,115 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>登录页面</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f4f4f9;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+        }
+
+        form {
+            background-color: #fff;
+            padding: 40px;
+            border-radius: 8px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+            width: 300px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+            color: #333;
+        }
+
+        input[type="text"],
+        input[type="password"] {
+            width: 100%;
+            padding: 10px;
+            margin-bottom: 20px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            box-sizing: border-box;
+        }
+
+        input[type="text"]:focus,
+        input[type="password"]:focus {
+            outline: none;
+            border-color: #007BFF;
+        }
+
+        .captcha-container {
+            display: flex;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+
+        .captcha-container input {
+            flex: 1;
+            margin-bottom: 0;
+            width: 50%; /* 输入框占一半空间 */
+        }
+
+        .captcha-container img {
+            width: 50%; /* 图片占一半空间 */
+            margin-left: 10px;
+            cursor: pointer;
+            border-radius: 4px;
+            object-fit: cover; /* 确保图片填充空间 */
+            height: 38px;
+        }
+
+        button {
+            width: 100%;
+            padding: 10px;
+            background-color: #007BFF;
+            color: #fff;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: background-color 0.3s ease;
+        }
+
+        button:hover {
+            background-color: #0056b3;
+        }
+
+        #message {
+            margin-top: 20px;
+            color: red;
+            text-align: center;
+        }
+    </style>
 </head>
 
 <body>
 <form id="loginForm" action="/login" method="post">
     <label for="username">用户名:</label>
-    <input type="text" id="username" name="username" required><br>
+    <input type="text" id="username" name="username" required>
     <label for="password">密码:</label>
-    <input type="password" id="password" name="password" required><br>
+    <input type="password" id="password" name="password" required>
     <label for="captcha">验证码:</label>
-    <input type="text" id="captcha" name="captcha" required>
-    <img id="captchaImg" src="" alt="验证码" onclick="refreshCaptcha()">
-    <button type="button" onclick="verifyCaptcha()">登录</button>
+    <div class="captcha-container">
+        <input type="text" id="captcha" name="captcha" required>
+        <img id="captchaImg" src="" alt="点击刷新验证码" onclick="refreshCaptcha()">
+    </div>
+    <button type="button" onclick="verifyForm()">登录</button>
 </form>
 <div id="message"></div>
 
 <script>
     // 获取验证码图片
     function getCaptcha() {
-        fetch('/verify/getcode', {
+        fetch('/getcode', {
             method: 'POST'
         })
             .then(response => response.json())
             .then(data => {
-                // data.msg = undefined;
                 if (data.status === 'success') {
                     document.getElementById('captchaImg').src = data.msg;
                 } else {
@@ -46,27 +131,41 @@
     }
 
     // 验证验证码
-    function verifyCaptcha() {
-        const captcha = document.getElementById('captcha').value;
-        fetch(`/verify/checkcode?code=${captcha}`, {
-            method: 'GET'
-        })
-            .then(response => response.json())
-            .then(data => {
-                if (data.status === 'success') {
-                    // 验证码验证通过，提交登录表单
-                    document.getElementById('loginForm').submit();
-                } else {
-                    document.getElementById('message').textContent = data.msg;
-                    // 刷新验证码
-                    refreshCaptcha();
-                }
-            })
-            .catch(error => {
-                console.error('验证码验证失败:', error);
-            });
-    }
+    function verifyForm() {
+        const username = document.getElementById('username').value.trim();
+        const password = document.getElementById('password').value.trim();
+        const captcha = document.getElementById('captcha').value.trim();
 
+        // 非空校验
+        if (!username) {
+            document.getElementById('message').textContent = '请输入用户名';
+            return;
+        }
+        if (!password) {
+            document.getElementById('message').textContent = '请输入密码';
+            return;
+        }
+        if (!captcha) {
+            document.getElementById('message').textContent = '请输入验证码';
+            return;
+        }
+        fetch(`/login`,{
+            method: 'post',
+            body: new FormData(document.getElementById('loginForm')),
+
+        }).then(response=>response.json()).then(data=>{
+            if (data.status==="success"){
+                alert('登陆成功！');
+            }else{
+                document.getElementById('message').textContent = data.msg;
+                refreshCaptcha()
+            }
+        }).catch(error=>{
+            console.error('登陆失败：',error);
+            document.getElementById('message').textContent='网络错误，请重试！';
+            refreshCaptcha();
+        })
+    }
     // 页面加载时获取验证码
     window.onload = getCaptcha;
 </script>
