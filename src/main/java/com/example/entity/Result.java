@@ -12,5 +12,4 @@ import lombok.Setter;
 public class Result {
     private String status;
     private String msg;
-
 }

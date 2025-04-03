@@ -1,18 +1,21 @@
 package com.example.config;
 
+import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Component;
-import org.springframework.util.DigestUtils;
 
 @Component
 public class MyPasswordEncoder implements PasswordEncoder {
+    // 密码加盐
+    // 创建 BCryptPasswordEncoder 实例,用于后续的密码编码和解码操作
+    private final BCryptPasswordEncoder bCryptPasswordEncoder = new BCryptPasswordEncoder();
     @Override
     public String encode(CharSequence rawPassword) {
-        return DigestUtils.md5DigestAsHex(rawPassword.toString().getBytes());
+        return bCryptPasswordEncoder.encode(rawPassword);
     }
 
     @Override
     public boolean matches(CharSequence rawPassword, String encodedPassword) {
-        return encodedPassword.equals(DigestUtils.md5DigestAsHex(rawPassword.toString().getBytes()));
+        return bCryptPasswordEncoder.matches(rawPassword, encodedPassword);
     }
 }

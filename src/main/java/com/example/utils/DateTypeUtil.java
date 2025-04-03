@@ -13,7 +13,7 @@ import java.text.SimpleDateFormat;
 
 @MappedJdbcTypes(JdbcType.DATE)
 @MappedTypes(String.class)
-public class DateTypeHandler implements TypeHandler<String> {
+public class DateTypeUtil implements TypeHandler<String> {
     private final SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd");
 
     @Override

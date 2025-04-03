@@ -19,25 +19,6 @@ public class LoginRegisterController {
         this.userService = userService;
     }
 
-    @RequestMapping("/login_error")
-    public Result loginError() {
-        return new Result("error", "登录失败!");
-    }
-
-    @RequestMapping("/login_success")
-    public Result loginSuccess() {
-        return new Result("success", "登录成功!");
-    }
-
-    /**
-     * 如果自动跳转到这个页面，说明用户未登录，返回相应的提示即可
-     * 如果要支持表单登录，可以在这个方法中判断请求的类型，进而决定返回JSON还是HTML页面
-     */
-    @RequestMapping("/login_page")
-    public Result loginPage() {
-        return new Result("error", "尚未登录，请登录!");
-    }
-
     @PostMapping("/register")
     public Result reg(User user) {
         int result = userService.reg(user);

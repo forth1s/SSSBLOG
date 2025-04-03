@@ -1,6 +1,6 @@
 package com.example.controller;
 
-import com.example.utils.VerifyUtil;
+import com.example.utils.CaptchaUtil;
 import com.example.entity.Result;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpSession;
@@ -13,20 +13,20 @@ import java.awt.image.BufferedImage;
 import java.io.ByteArrayOutputStream;
 import java.util.Base64;
 import java.util.concurrent.TimeUnit;
-import com.example.utils.RedisUtils;
+import com.example.utils.RedisUtil;
 import org.springframework.util.StringUtils;
 
 @RestController
 public class CaptchaController {
 
-    private final RedisUtils redisTemplate;
+    private final RedisUtil redisTemplate;
 
     // 验证码刷新间隔（毫秒）
     private static final int REFRESH_INTERVAL = 60*1000;
     // 验证码有效期（分钟）
     private static final int VERIFY_CODE_EXPIRE_MINUTES = 2;
 
-    public CaptchaController(RedisUtils redisTemplate) {
+    public CaptchaController(RedisUtil redisTemplate) {
         this.redisTemplate = redisTemplate;
     }
 
@@ -50,7 +50,7 @@ public class CaptchaController {
 
         // 利用图片工具生成图片
         // 返回的数组第一个参数是生成的验证码，第二个参数是生成的图片
-        Object[] objs = VerifyUtil.newBuilder()
+        Object[] objs = CaptchaUtil.newBuilder()
                 .setWidth(120)
                 .setHeight(35)
                 .setSize(6)

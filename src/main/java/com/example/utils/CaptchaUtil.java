@@ -8,7 +8,7 @@ import java.util.concurrent.ThreadLocalRandom;
 /**
  * 图形验证码生成
  */
-public class VerifyUtil {
+public class CaptchaUtil {
     // 默认验证码字符集
     private static final char[] CHARS = {
             '0', '1', '2', '3', '4', '5', '6', '7', '8', '9',
@@ -86,8 +86,8 @@ public class VerifyUtil {
             return this;
         }
 
-        public VerifyUtil build() {
-            return new VerifyUtil(this);
+        public CaptchaUtil build() {
+            return new CaptchaUtil(this);
         }
     }
 
@@ -101,7 +101,7 @@ public class VerifyUtil {
     /**
      * 初始化基础参数
      */
-    private VerifyUtil(Builder builder) {
+    private CaptchaUtil(Builder builder) {
         this.size = builder.size;
         this.lines = builder.lines;
         this.width = builder.width;

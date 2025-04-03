@@ -17,7 +17,7 @@ import java.util.concurrent.TimeUnit;
  * @since 2024/3/12 14:02
  */
 @Component
-public class RedisUtils {
+public class RedisUtil {
     private final RedisTemplate<String, Object> redisTemplate;
     private static final Long RELEASE_SUCCESS = 1L;
     private static final String RELEASE_SCRIPT = "if redis.call('get', KEYS[1]) == ARGV[1] then " +
@@ -26,7 +26,7 @@ public class RedisUtils {
             "return 0 " +
             "end";
 
-    public RedisUtils(RedisTemplate<String, Object> redisTemplate) {
+    public RedisUtil(RedisTemplate<String, Object> redisTemplate) {
         this.redisTemplate = redisTemplate;
     }
 

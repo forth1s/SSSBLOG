@@ -21,10 +21,7 @@ public class SSSBlogApplication extends WebMvcConfigurationSupport {
     protected void addResourceHandlers(ResourceHandlerRegistry registry) {
         registry.addResourceHandler("/**").addResourceLocations(ResourceUtils.CLASSPATH_URL_PREFIX + "/templates/");
         registry.addResourceHandler("/**").addResourceLocations(ResourceUtils.CLASSPATH_URL_PREFIX + "/static/");
-//        registry.addResourceHandler("/static/**")
-//                .addResourceLocations(ResourceUtils.CLASSPATH_URL_PREFIX + "/static/");
-//        registry.addResourceHandler("/login.html").addResourceLocations("classpath:/static/login.html")
-//                .addResourceLocations(ResourceUtils.CLASSPATH_URL_PREFIX + "/static/");
+
         super.addResourceHandlers(registry);
     }
 }

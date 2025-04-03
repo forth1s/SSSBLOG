@@ -1,21 +1,16 @@
 package com.example.config;
 
-//import com.example.controller.VerifyController;
-
 import com.example.entity.Result;
 import com.example.service.UserService;
-import com.example.utils.RedisUtils;
+import com.example.utils.RedisUtil;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.ProviderManager;
 import org.springframework.security.authentication.dao.DaoAuthenticationProvider;
-import org.springframework.security.config.annotation.method.configuration.EnableGlobalMethodSecurity;
-import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
-import org.springframework.security.config.annotation.web.configuration.WebSecurityCustomizer;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
 import org.springframework.security.config.annotation.web.configurers.LogoutConfigurer;
 import org.springframework.security.web.SecurityFilterChain;
@@ -23,6 +18,8 @@ import org.springframework.security.web.access.AccessDeniedHandler;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 
 import java.io.PrintWriter;
+
+import static com.example.utils.JwtTokenUtil.generateToken;
 
 /**
  * 想让 Spring Security 中的资源可以匿名访问时，有两种办法：
@@ -34,12 +31,11 @@ import java.io.PrintWriter;
 public class WebSecurityConfig {
     final UserService userService;
     private final ObjectMapper objectMapper = new ObjectMapper();
-    private final RedisUtils redisUtils;
+    private final RedisUtil redisUtil;
 
-    public WebSecurityConfig(UserService userService, RedisUtils redisUtils) {
-
+    public WebSecurityConfig(UserService userService, RedisUtil redisUtil) {
         this.userService = userService;
-        this.redisUtils = redisUtils;
+        this.redisUtil = redisUtil;
     }
 
     /**
@@ -60,47 +56,48 @@ public class WebSecurityConfig {
     SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
 
         http.authorizeHttpRequests(auth -> auth
-                        .requestMatchers("/getcode","/login_error", "/register").permitAll()
-                        .requestMatchers("/static/**").permitAll()  // 允许访问静态资源
-                        //.requestMatchers("/admin/**").authenticated()
+                        .requestMatchers("/getcode","/login_success","/login_error", "/register").permitAll()
+//                        .requestMatchers("/static/**").permitAll()  // 允许访问静态资源
+                        .requestMatchers("/admin/**").authenticated()
                         .requestMatchers("/admin/**").hasRole("超级管理员")
                         .anyRequest().authenticated()
                 )
+
                 .formLogin(fLogin -> fLogin
                                 .loginPage("/login.html") // 指定登录页面
                                 .loginProcessingUrl("/login")
-//                        .successHandler(
-//                                (_, httpServletResponse, _) -> {
-//                                    httpServletResponse.setContentType("application/json;charset=utf-8");
-//                                    Result result = new Result("success", "登录成功");
-//                                    String jsonResponse = objectMapper.writeValueAsString(result);
-//                                    try (PrintWriter out = httpServletResponse.getWriter()) {
-//                                        out.write(jsonResponse);
-//                                        out.flush();
-//                                    }
-//                                }
-//                        )
-                                .successForwardUrl("/login_success")
-//                        .failureHandler(
-//                                (_, httpServletResponse, _) -> {
-//                                    httpServletResponse.setContentType("application/json;charset=utf-8");
-//                                    Result result = new Result("error", "登录失败");
-//                                    String jsonResponse = objectMapper.writeValueAsString(result);
-//                                    try (PrintWriter out = httpServletResponse.getWriter()) {
-//                                        out.write(jsonResponse);
-//                                        out.flush();
-//                                    }
-//                                }
-//                        )
-                                // failureForwardUrl方法的跳转是服务器端跳转，
-                                // 服务器端跳转的好处是可以携带登录异常信息。如果登录失败，自动跳转到登录页面后，就可以将错误信息展示出来。
-                                .failureForwardUrl("/login_error")
+                        .successHandler(
+                                (httpServletRequest, httpServletResponse, _) -> {
+                                    httpServletResponse.setContentType("application/json;charset=utf-8");
+
+                                    // 添加生成 Token 的逻辑
+                                     String token = generateToken((String) httpServletRequest.getAttribute("username"));
+                                     System.out.println(token);
+                                    Result result = new Result("success", token);
+                                    String jsonResponse = objectMapper.writeValueAsString(result);
+                                    try (PrintWriter out = httpServletResponse.getWriter()) {
+                                        out.write(jsonResponse);
+                                        out.flush();
+                                    }
+                                }
+                        )
+                        .failureHandler(
+                                (_, httpServletResponse, _) -> {
+                                    httpServletResponse.setContentType("application/json;charset=utf-8");
+                                    Result result = new Result("error", "登录失败");
+                                    String jsonResponse = objectMapper.writeValueAsString(result);
+                                    try (PrintWriter out = httpServletResponse.getWriter()) {
+                                        out.write(jsonResponse);
+                                        out.flush();
+                                    }
+                                }
+                        )
                                 .usernameParameter("username")
                                 .passwordParameter("password")
                                 .permitAll() // 允许所有用户访问登录页面
                 )
                 .logout(LogoutConfigurer::permitAll)
-                .addFilterBefore(new CaptchaFilter(redisUtils), UsernamePasswordAuthenticationFilter.class)
+                .addFilterBefore(new CaptchaFilter(redisUtil), UsernamePasswordAuthenticationFilter.class)
                 .csrf(AbstractHttpConfigurer::disable)
                 .exceptionHandling(e -> e.accessDeniedHandler(getAccessDeniedHandler()));
         return http.build();
