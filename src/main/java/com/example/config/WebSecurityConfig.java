@@ -11,11 +11,14 @@ import org.springframework.security.authentication.ProviderManager;
 import org.springframework.security.authentication.dao.DaoAuthenticationProvider;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
+import org.springframework.security.config.annotation.web.configuration.WebSecurityCustomizer;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
-import org.springframework.security.config.annotation.web.configurers.LogoutConfigurer;
+import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.access.AccessDeniedHandler;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
+import org.springframework.web.cors.CorsConfiguration;
+import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
 import java.io.PrintWriter;
 
@@ -32,6 +35,17 @@ public class WebSecurityConfig {
     final UserService userService;
     private final ObjectMapper objectMapper = new ObjectMapper();
     private final RedisUtil redisUtil;
+
+    private static final String[] PERMIT_ALL_PATHS = {
+            "/getcode",
+            "/register",
+            "/sendMail",
+            "/reset-password"
+    };
+
+    // 若角色无 ROLE_ 前缀，需在 UserDetails 中返回正确角色（如 ROLE_超级管理员）
+    private static final String ADMIN_ROLE = "超级管理员";
+
 
     public WebSecurityConfig(UserService userService, RedisUtil redisUtil) {
         this.userService = userService;
@@ -55,35 +69,26 @@ public class WebSecurityConfig {
     @Bean
     SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
 
-        http.authorizeHttpRequests(auth -> auth
-                                .requestMatchers(
-                                        "/getcode",
-                                        "/login_success",
-                                        "/login_error",
-                                        "/register",
-                                        "/sendMail",
-                                        "/reset-password"
-                                ).permitAll()
-//                        .requestMatchers("/static/**").permitAll()  // 允许访问静态资源
-                                .requestMatchers("/admin/**").authenticated()
-                                .requestMatchers("/admin/**").hasRole("超级管理员")
-                                .anyRequest().authenticated()
+        http.sessionManagement(session -> session
+                        .sessionCreationPolicy(SessionCreationPolicy.STATELESS) // 无状态会话（JWT 场景，前后端分离增强）
                 )
-
+                .authorizeHttpRequests(auth -> auth
+                        .requestMatchers(PERMIT_ALL_PATHS).permitAll()
+                        .requestMatchers("/admin/**").hasAuthority(ADMIN_ROLE)
+                        .anyRequest().authenticated()
+                )
                 .formLogin(fLogin -> fLogin
-                        .loginPage("/login.html") // 指定登录页面
-                        .loginProcessingUrl("/login")
+                        .loginProcessingUrl("/login") // 登录接口
                         .successHandler(
-                                (httpServletRequest, httpServletResponse, _) -> {
+                                (_, httpServletResponse, authentication) -> {
                                     httpServletResponse.setContentType("application/json;charset=utf-8");
-
                                     // 添加生成 Token 的逻辑
-                                    String token = generateToken((String) httpServletRequest.getAttribute("username"));
+                                    String username = authentication.getName();
+                                    String token = generateToken(username);
                                     System.out.println(token);
-                                    Result result = new Result("success", token);
-                                    String jsonResponse = objectMapper.writeValueAsString(result);
+                                    Result result = new Result("success", "token:" + token);
                                     try (PrintWriter out = httpServletResponse.getWriter()) {
-                                        out.write(jsonResponse);
+                                        out.write(objectMapper.writeValueAsString(result));
                                         out.flush();
                                     }
                                 }
@@ -92,34 +97,46 @@ public class WebSecurityConfig {
                                 (_, httpServletResponse, _) -> {
                                     httpServletResponse.setContentType("application/json;charset=utf-8");
                                     Result result = new Result("error", "登录失败");
-                                    String jsonResponse = objectMapper.writeValueAsString(result);
                                     try (PrintWriter out = httpServletResponse.getWriter()) {
-                                        out.write(jsonResponse);
+                                        out.write(objectMapper.writeValueAsString(result));
                                         out.flush();
                                     }
                                 }
                         )
-                        .usernameParameter("username")
-                        .passwordParameter("password")
                         .permitAll() // 允许所有用户访问登录页面
                 )
-                .logout(LogoutConfigurer::permitAll)
+                .logout(logout -> logout
+                        .logoutUrl("/logout") // 登出接口
+                        .invalidateHttpSession(true) // 失效 Session
+                        .deleteCookies("JSESSIONID") // 清除 Cookie
+                        .permitAll()
+                )
+                // 过滤器顺序：验证码过滤器（登录时验证） -> JWT 认证过滤器（所有请求解析 Token） -> 用户名密码认证过滤器
                 .addFilterBefore(new CaptchaFilter(redisUtil), UsernamePasswordAuthenticationFilter.class)
+                .addFilterBefore(new JwtAuthenticationFilter(userService), UsernamePasswordAuthenticationFilter.class)
                 .csrf(AbstractHttpConfigurer::disable)
-                .exceptionHandling(e -> e.accessDeniedHandler(getAccessDeniedHandler()));
+                .exceptionHandling(exception -> exception
+                        .accessDeniedHandler(getAccessDeniedHandler())
+                        .authenticationEntryPoint((_, response, _) -> {
+                            response.setStatus(401);
+                            response.setContentType("application/json;charset=utf-8");
+                            Result result = new Result("error", "未认证，请先登录");
+                            try (PrintWriter out = response.getWriter()) {
+                                out.write(objectMapper.writeValueAsString(result));
+                            }
+                        })
+                );
         return http.build();
     }
 
     // 2、用于自定义 Web 安全配置，忽略指定的请求路径，这些请求将不会经过 Spring Security 的过滤器链。
-//    @Bean
-//    WebSecurityCustomizer webSecurityCustomizer() {
-//        return web -> web.ignoring().requestMatchers(
-
-//                "/static/**",
-//                "/templates/**",
-//                "/head/**"
-//        );
-//    }
+    @Bean
+    WebSecurityCustomizer webSecurityCustomizer() {
+        return web -> web.ignoring().requestMatchers(
+                "/static/**",
+                "/templates/**"
+        );
+    }
 
     /**
      * 用于处理用户访问被拒绝的情况
@@ -127,13 +144,28 @@ public class WebSecurityConfig {
     @Bean
     AccessDeniedHandler getAccessDeniedHandler() {
         return (_, response, _) -> {
+            response.setStatus(403);
             response.setContentType("application/json;charset=utf-8");
-            Result result = new Result("error", "访问被拒绝");
-            String jsonResponse = objectMapper.writeValueAsString(result);
+            Result result = new Result("error", "权限不足，禁止访问");
             try (PrintWriter out = response.getWriter()) {
-                out.write(jsonResponse);
+                out.write(objectMapper.writeValueAsString(result));
                 out.flush();
             }
         };
+    }
+
+    /**
+     * 跨域配置
+     */
+    @Bean
+    public UrlBasedCorsConfigurationSource corsConfigurationSource() {
+        CorsConfiguration configuration = new CorsConfiguration();
+        configuration.addAllowedOriginPattern("*"); // 允许所有来源（生产环境需限制具体域名）
+        configuration.addAllowedMethod("*");
+        configuration.addAllowedHeader("*");
+        configuration.setAllowCredentials(true);
+        UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
+        source.registerCorsConfiguration("/**", configuration);
+        return source;
     }
 }

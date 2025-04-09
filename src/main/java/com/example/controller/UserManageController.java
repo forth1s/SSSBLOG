@@ -19,7 +19,6 @@ public class UserManageController {
     public UserManageController(UserService userService) {
         this.userService = userService;
     }
-
     @GetMapping(value = "/user")
     public List<User> getUsersByUsername(String username) {
         return userService.getUsersByUsername(username);
