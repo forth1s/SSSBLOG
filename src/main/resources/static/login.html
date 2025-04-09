@@ -17,11 +17,16 @@
         }
 
         form {
+            position: relative;
             background-color: #fff;
             padding: 40px;
             border-radius: 8px;
             box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
             width: 300px;
+        }
+
+        #registerForm {
+            display: none; /* 默认隐藏注册表单 */
         }
 
         label {
@@ -56,15 +61,15 @@
         .captcha-container input {
             flex: 1;
             margin-bottom: 0;
-            width: 50%; /* 输入框占一半空间 */
+            width: 50%;
         }
 
         .captcha-container img {
-            width: 50%; /* 图片占一半空间 */
+            width: 50%;
             margin-left: 10px;
             cursor: pointer;
             border-radius: 4px;
-            object-fit: cover; /* 确保图片填充空间 */
+            object-fit: cover;
             height: 38px;
         }
 
@@ -88,6 +93,29 @@
             color: red;
             text-align: center;
         }
+
+        #countdown {
+            margin-left: 10px;
+            color: #999;
+        }
+
+        .switch-text {
+            text-decoration: underline;
+            color: #007BFF;
+            cursor: pointer;
+            position: absolute;
+            font-size: 14px;
+        }
+
+        .switch-text-left {
+            bottom: 10px;
+            left: 40px;
+        }
+
+        .switch-text-right {
+            bottom: 10px;
+            right: 40px;
+        }
     </style>
 </head>
 
@@ -100,9 +128,36 @@
     <label for="captcha">验证码:</label>
     <div class="captcha-container">
         <input type="text" id="captcha" name="captcha" required>
-        <img id="captchaImg" src="" alt="点击刷新验证码" onclick="refreshCaptcha()">
+        <img id="captchaImg" src="" alt="点击刷新验证码" onclick="getCaptcha()">
+        <span id="countdown"></span>
     </div>
-    <button type="button" onclick="verifyForm()">登录</button>
+    <button type="button" onclick="verifyLoginForm()">登录</button>
+    <div class="switch-text switch-text-right" onclick="showRegisterForm()">还未注册？立即注册</div>
+</form>
+
+<!-- 新增注册表单 -->
+<form id="registerForm" action="/register" method="post">
+    <label for="regUsername">用户名:</label>
+    <input type="text" id="regUsername" name="username" required>
+
+    <label for="regPassword">密码:</label>
+    <input type="password" id="regPassword" name="password" required>
+
+    <label for="regConfirmPassword">确认密码:</label>
+    <input type="password" id="regConfirmPassword" name="confirmPassword" required>
+
+    <label for="regEmail">邮箱:</label>
+    <input type="email" id="regEmail" name="email" required>
+
+    <label for="regCaptcha">验证码:</label>
+    <div class="captcha-container">
+        <input type="text" id="regCaptcha" name="captcha" required>
+        <img id="regCaptchaImg" src="" alt="点击刷新验证码" onclick="getCaptcha()">
+        <span id="regCountdown"></span>
+    </div>
+
+    <button type="button" onclick="verifyRegisterForm()">注册</button>
+    <div class="switch-text switch-text-left" onclick="showLoginForm()">已有账号？立即登录</div>
 </form>
 <div id="message"></div>
 
@@ -117,21 +172,18 @@
                 if (data.status === 'success') {
                     document.getElementById('captchaImg').src = data.msg;
                 } else {
-                    alert(data.msg);
+                    // 直接显示错误信息到页面
+                    document.getElementById('message').textContent = data.msg;
                 }
             })
             .catch(error => {
                 console.error('获取验证码失败:', error);
+                document.getElementById('message').textContent = '网络错误，请重试！';
             });
     }
 
-    // 刷新验证码
-    function refreshCaptcha() {
-        getCaptcha();
-    }
-
     // 验证验证码
-    function verifyForm() {
+    function verifyLoginForm() {
         const username = document.getElementById('username').value.trim();
         const password = document.getElementById('password').value.trim();
         const captcha = document.getElementById('captcha').value.trim();
@@ -149,23 +201,114 @@
             document.getElementById('message').textContent = '请输入验证码';
             return;
         }
-        fetch(`/login`,{
+
+        fetch(`/login`, {
             method: 'post',
             body: new FormData(document.getElementById('loginForm')),
-
-        }).then(response=>response.json()).then(data=>{
-            if (data.status==="success"){
-                alert('登陆成功！');
-            }else{
-                document.getElementById('message').textContent = data.msg;
-                refreshCaptcha()
-            }
-        }).catch(error=>{
-            console.error('登陆失败：',error);
-            document.getElementById('message').textContent='网络错误，请重试！';
-            refreshCaptcha();
         })
+            .then(response => response.json())
+            .then(data => {
+                if (data.status === "success") {
+                    // 成功提示改为页面显示
+                    document.getElementById('message').textContent = '登陆成功！';
+                    // 可添加自动跳转逻辑：window.location.href = '/home';
+                } else {
+                    document.getElementById('message').textContent = data.msg;
+                    // 不中断倒计时，只刷新验证码图片
+                    getCaptcha();
+                }
+            })
+            .catch(error => {
+                console.error('登陆失败：', error);
+                document.getElementById('message').textContent = '网络错误，请重试！';
+                // 不中断倒计时，只刷新验证码图片
+                getCaptcha();
+            });
     }
+
+    // 新增注册验证码函数
+    function getRegisterCaptcha() {
+        fetch('/getcode', { method: 'POST' })
+            .then(response => response.json())
+            .then(data => {
+                if (data.status === 'success') {
+                    document.getElementById('regCaptchaImg').src = data.msg;
+                } else {
+                    document.getElementById('message').textContent = data.msg;
+                }
+            })
+            .catch(error => {
+                console.error('获取注册验证码失败:', error);
+                document.getElementById('message').textContent = '网络错误，请重试！';
+            });
+    }
+
+    // 新增表单切换函数
+    function showLoginForm() {
+        document.getElementById('loginForm').style.display = 'block';
+        document.getElementById('registerForm').style.display = 'none';
+        document.title = '登录页面';
+        getCaptcha(); // 刷新登录验证码
+    }
+
+    function showRegisterForm() {
+        document.getElementById('loginForm').style.display = 'none';
+        document.getElementById('registerForm').style.display = 'block';
+        document.title = '注册页面';
+        getRegisterCaptcha(); // 刷新注册验证码
+    }
+
+    // 新增注册验证函数
+    function verifyRegisterForm() {
+        const username = document.getElementById('regUsername').value.trim();
+        const password = document.getElementById('regPassword').value.trim();
+        const confirmPassword = document.getElementById('regConfirmPassword').value.trim();
+        const email = document.getElementById('regEmail').value.trim();
+        const captcha = document.getElementById('regCaptcha').value.trim();
+
+        // 非空校验
+        if (!username) {
+            document.getElementById('message').textContent = '请输入用户名';
+            return;
+        }
+        if (!password) {
+            document.getElementById('message').textContent = '请输入密码';
+            return;
+        }
+        if (password !== confirmPassword) {
+            document.getElementById('message').textContent = '两次输入的密码不一致';
+            return;
+        }
+        if (!email) {
+            document.getElementById('message').textContent = '请输入邮箱';
+            return;
+        }
+        if (!captcha) {
+            document.getElementById('message').textContent = '请输入验证码';
+            return;
+        }
+
+        fetch('/register', {
+            method: 'post',
+            body: new FormData(document.getElementById('registerForm')),
+        })
+            .then(response => response.json())
+            .then(data => {
+                if (data.status === "success") {
+                    document.getElementById('message').textContent = '注册成功！请登录';
+                    showLoginForm(); // 注册成功后切换到登录表单
+                } else {
+                    document.getElementById('message').textContent = data.msg;
+                    getRegisterCaptcha(); // 刷新验证码
+                }
+            })
+            .catch(error => {
+                console.error('注册失败：', error);
+                document.getElementById('message').textContent = '网络错误，请重试！';
+                getRegisterCaptcha(); // 刷新验证码
+            });
+    }
+
     // 页面加载时获取验证码
     window.onload = getCaptcha;
 </script>

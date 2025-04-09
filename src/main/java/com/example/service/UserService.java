@@ -86,8 +86,24 @@ public class UserService implements UserDetailsService {
         return userMapper.updateUserEmail(email, user.getId());
     }
 
-    public List<User> getUserByUsername(String username) {
-        return userMapper.getUserByUsername(username);
+    /**
+     * 根据邮箱修改密码（需先验证验证码）
+     */
+    public int updatePasswordByEmail(String email, String newPassword){
+        // 加密新密码
+        String encodedPassword = passwordEncoder.encode(newPassword);
+        return userMapper.updateUserPasswordByEmail(email,encodedPassword);
+    }
+
+    public User getUserByEmail(String email) {
+        return userMapper.getUserByEmail(email);
+    }
+
+    /**
+     * 为了健壮性，在mybatis中，除了统计数据，不要用基本类型来接收结果，最好都用包装类型
+     */
+    public List<User> getUsersByUsername(String username) {
+        return userMapper.getUsersByUsername(username);
     }
 
     public List<Role> getAllRole() {

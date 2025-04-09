@@ -18,6 +18,7 @@ import java.util.concurrent.TimeUnit;
  */
 @Component
 public class RedisUtil {
+
     private final RedisTemplate<String, Object> redisTemplate;
     private static final Long RELEASE_SUCCESS = 1L;
     private static final String RELEASE_SCRIPT = "if redis.call('get', KEYS[1]) == ARGV[1] then " +

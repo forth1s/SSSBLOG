@@ -21,8 +21,8 @@ public class UserManageController {
     }
 
     @GetMapping(value = "/user")
-    public List<User> getUserByUsername(String username) {
-        return userService.getUserByUsername(username);
+    public List<User> getUsersByUsername(String username) {
+        return userService.getUsersByUsername(username);
     }
 
     @GetMapping(value = "/user/{id}")

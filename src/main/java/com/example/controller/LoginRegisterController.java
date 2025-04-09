@@ -21,11 +21,11 @@ public class LoginRegisterController {
 
     @PostMapping("/register")
     public Result reg(User user) {
-        int result = userService.reg(user);
-        if (result == 0) {
+        int flag = userService.reg(user);
+        if (flag == 0) {
             //成功
             return new Result("success", "注册成功!");
-        } else if (result == 1) {
+        } else if (flag == 1) {
             return new Result("error", "用户名重复，注册失败!");
         } else {
             //失败

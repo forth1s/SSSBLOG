@@ -7,9 +7,7 @@ import com.example.entity.User;
 
 import java.util.List;
 
-/**
- * Created by sang on 2017/12/17.
- */
+
 @Mapper
 public interface UserMapper {
 
@@ -19,7 +17,9 @@ public interface UserMapper {
 
     int updateUserEmail(@Param("email") String email, @Param("id") Long id);
 
-    List<User> getUserByUsername(@Param("username") String username);
+    int updateUserPasswordByEmail(@Param("email") String email, @Param("password") String password);
+
+    List<User> getUsersByUsername(@Param("username") String username);
 
     List<Role> getAllRole();
 
@@ -32,4 +32,6 @@ public interface UserMapper {
     int setUserRoles(@Param("rids") Long[] rids, @Param("id") Long id);
 
     User getUserById(@Param("id") Long id);
+
+    User getUserByEmail(@Param("email") String email);
 }

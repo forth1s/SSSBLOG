@@ -56,23 +56,30 @@ public class WebSecurityConfig {
     SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
 
         http.authorizeHttpRequests(auth -> auth
-                        .requestMatchers("/getcode","/login_success","/login_error", "/register").permitAll()
+                                .requestMatchers(
+                                        "/getcode",
+                                        "/login_success",
+                                        "/login_error",
+                                        "/register",
+                                        "/sendMail",
+                                        "/reset-password"
+                                ).permitAll()
 //                        .requestMatchers("/static/**").permitAll()  // 允许访问静态资源
-                        .requestMatchers("/admin/**").authenticated()
-                        .requestMatchers("/admin/**").hasRole("超级管理员")
-                        .anyRequest().authenticated()
+                                .requestMatchers("/admin/**").authenticated()
+                                .requestMatchers("/admin/**").hasRole("超级管理员")
+                                .anyRequest().authenticated()
                 )
 
                 .formLogin(fLogin -> fLogin
-                                .loginPage("/login.html") // 指定登录页面
-                                .loginProcessingUrl("/login")
+                        .loginPage("/login.html") // 指定登录页面
+                        .loginProcessingUrl("/login")
                         .successHandler(
                                 (httpServletRequest, httpServletResponse, _) -> {
                                     httpServletResponse.setContentType("application/json;charset=utf-8");
 
                                     // 添加生成 Token 的逻辑
-                                     String token = generateToken((String) httpServletRequest.getAttribute("username"));
-                                     System.out.println(token);
+                                    String token = generateToken((String) httpServletRequest.getAttribute("username"));
+                                    System.out.println(token);
                                     Result result = new Result("success", token);
                                     String jsonResponse = objectMapper.writeValueAsString(result);
                                     try (PrintWriter out = httpServletResponse.getWriter()) {
@@ -92,9 +99,9 @@ public class WebSecurityConfig {
                                     }
                                 }
                         )
-                                .usernameParameter("username")
-                                .passwordParameter("password")
-                                .permitAll() // 允许所有用户访问登录页面
+                        .usernameParameter("username")
+                        .passwordParameter("password")
+                        .permitAll() // 允许所有用户访问登录页面
                 )
                 .logout(LogoutConfigurer::permitAll)
                 .addFilterBefore(new CaptchaFilter(redisUtil), UsernamePasswordAuthenticationFilter.class)

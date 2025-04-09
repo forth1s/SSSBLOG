@@ -19,15 +19,16 @@ import org.springframework.util.StringUtils;
 @RestController
 public class CaptchaController {
 
-    private final RedisUtil redisTemplate;
+    private final RedisUtil redisUtil;
 
     // 验证码刷新间隔（毫秒）
     private static final int REFRESH_INTERVAL = 60*1000;
     // 验证码有效期（分钟）
     private static final int VERIFY_CODE_EXPIRE_MINUTES = 2;
 
-    public CaptchaController(RedisUtil redisTemplate) {
-        this.redisTemplate = redisTemplate;
+    private static final String IMAGE_VERIFY_CODE_PREFIX = "VERIFY_CODE_";
+    public CaptchaController(RedisUtil redisUtil) {
+        this.redisUtil = redisUtil;
     }
 
     /**
@@ -37,47 +38,41 @@ public class CaptchaController {
      * @return 统一响应格式的结果
      */
     @RequestMapping("/getcode")
-    public Result getCode(HttpServletRequest request) throws Exception {
-        // 获取到session
-        HttpSession session = request.getSession();
-        // 取到sessionId
-        String sessionId = session.getId();
+    public Result getCode(HttpServletRequest request) {
+        try {
+            HttpSession session = request.getSession();
+            String sessionId = session.getId();
 
-        // 检查请求频率
-        if (isRequestTooFrequent(sessionId)) {
-            return new Result("error", "请求过于频繁，请稍后再试");
+            if (isRequestTooFrequent(sessionId)) {
+                return new Result("error", "请求过于频繁，请稍后再试");
+            }
+
+            Object[] objs = CaptchaUtil.newBuilder()
+                    .setWidth(120)
+                    .setHeight(35)
+                    .setSize(6)
+                    .setLines(10)
+                    .setFontSize(25)
+                    .setTilt(true)
+                    .setBackgroundColor(Color.LIGHT_GRAY)
+                    .build()
+                    .createImage();
+
+            System.out.println(objs[0]);
+
+            redisUtil.set((IMAGE_VERIFY_CODE_PREFIX + sessionId), objs[0], VERIFY_CODE_EXPIRE_MINUTES, TimeUnit.MINUTES);
+            updateRequestTime(sessionId);
+
+            BufferedImage image = (BufferedImage) objs[1];
+            ByteArrayOutputStream baos = new ByteArrayOutputStream();
+            ImageIO.write(image, "png", baos);
+            byte[] imageBytes = baos.toByteArray();
+            String base64Image = Base64.getEncoder().encodeToString(imageBytes);
+
+            return new Result("success", "data:image/png;base64," + base64Image);
+        } catch (Exception e) {
+            return new Result("error", "生成验证码时发生错误，请稍后再试");
         }
-
-        // 利用图片工具生成图片
-        // 返回的数组第一个参数是生成的验证码，第二个参数是生成的图片
-        Object[] objs = CaptchaUtil.newBuilder()
-                .setWidth(120)
-                .setHeight(35)
-                .setSize(6)
-                .setLines(10)
-                .setFontSize(25)
-                .setTilt(true)
-                .setBackgroundColor(Color.LIGHT_GRAY)
-                .build()
-                .createImage();
-
-        // 打印验证码（仅用于调试，生产环境可移除）
-        System.out.println(objs[0]);
-
-        // 在redis中保存验证码，设置有效期
-        redisTemplate.set(("VERIFY_CODE_" + sessionId), objs[0], VERIFY_CODE_EXPIRE_MINUTES, TimeUnit.MINUTES);
-
-        // 更新请求时间
-        updateRequestTime(sessionId);
-
-        // 将图片转换为 Base64 编码
-        BufferedImage image = (BufferedImage) objs[1];
-        ByteArrayOutputStream baos = new ByteArrayOutputStream();
-        ImageIO.write(image, "png", baos);
-        byte[] imageBytes = baos.toByteArray();
-        String base64Image = Base64.getEncoder().encodeToString(imageBytes);
-
-        return new Result("success", "data:image/png;base64," + base64Image);
     }
 
     /**
@@ -88,7 +83,7 @@ public class CaptchaController {
      */
     private boolean isRequestTooFrequent(String id) {
         String lastRequestTimeKey = "VERIFY_CODE_LAST_REQUEST_" + id;
-        String lastRequestTimeStr = (String) redisTemplate.get(lastRequestTimeKey);
+        String lastRequestTimeStr = (String) redisUtil.get(lastRequestTimeKey);
         if (!StringUtils.hasLength(lastRequestTimeStr)) {
             return false;
         }
@@ -105,6 +100,6 @@ public class CaptchaController {
      */
     private void updateRequestTime(String id) {
         String lastRequestTimeKey = "VERIFY_CODE_LAST_REQUEST_" + id;
-        redisTemplate.set(lastRequestTimeKey, String.valueOf(System.currentTimeMillis()), 10, TimeUnit.SECONDS);
+        redisUtil.set(lastRequestTimeKey, String.valueOf(System.currentTimeMillis()), 10, TimeUnit.SECONDS);
     }
 }
