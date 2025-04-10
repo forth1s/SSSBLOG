@@ -1,10 +1,10 @@
 package com.example.entity;
 
-import lombok.Getter;
-import lombok.Setter;
+import lombok.*;
 
-@Setter
-@Getter
+@Data
+@NoArgsConstructor
+@AllArgsConstructor
 public class Tag {
     private Long id;
     private String tagName;

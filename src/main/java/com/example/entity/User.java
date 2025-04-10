@@ -1,8 +1,7 @@
 package com.example.entity;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
-import lombok.Getter;
-import lombok.Setter;
+import lombok.*;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
@@ -11,23 +10,29 @@ import java.sql.Timestamp;
 import java.util.List;
 import java.util.stream.Collectors;
 
-@Setter
+@Data
+@NoArgsConstructor
+@AllArgsConstructor
 public class User implements UserDetails {
-    @Getter
     private Long id;
-    @Getter
     private String username;
-    @Getter
     private String password;
     private boolean enabled;
-    @Getter
     private List<Role> roles;
-    @Getter
     private String email;
-    @Getter
     private String userface;
-    @Getter
     private Timestamp regTime;
+
+//    @Override
+//    @JsonIgnore
+//    public String getUsername() {
+//        return this.username;
+//    }
+
+//    @JsonIgnore
+//    public Long getId() {
+//        return this.id;
+//    }
 
     @Override
     @JsonIgnore

@@ -1,13 +1,13 @@
 package com.example.entity;
 
-import lombok.Getter;
-import lombok.Setter;
+import lombok.*;
 
 import java.sql.Timestamp;
 import java.util.List;
 
-@Setter
-@Getter
+@Data
+@NoArgsConstructor
+@AllArgsConstructor
 public class Article {
     private Long id;
     private String title;
@@ -24,5 +24,4 @@ public class Article {
     private String cateName;
     private List<Tag> tags;
     private String stateStr;
-
 }
