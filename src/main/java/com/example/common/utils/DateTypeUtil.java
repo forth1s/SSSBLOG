@@ -1,4 +1,4 @@
-package com.example.utils;
+package com.example.common.utils;
 
 import org.apache.ibatis.type.JdbcType;
 import org.apache.ibatis.type.MappedJdbcTypes;

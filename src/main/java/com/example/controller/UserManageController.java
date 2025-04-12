@@ -35,29 +35,29 @@ public class UserManageController {
     }
 
     @PutMapping(value = "/user/enabled")
-    public Result updateUserEnabled(Boolean enabled, Long uid) {
+    public Result<?> updateUserEnabled(Boolean enabled, Long uid) {
         if (userService.updateUserEnabled(enabled, uid) == 1) {
-            return new Result("success", "更新成功!");
+            return new Result<>(204,"success", "更新成功!");
         } else {
-            return new Result("error", "更新失败!");
+            return new Result<>(500,"error", "更新失败!");
         }
     }
 
     @DeleteMapping(value = "/user/{uid}")
-    public Result deleteUserById(@PathVariable Long uid) {
+    public Result<?> deleteUserById(@PathVariable Long uid) {
         if (userService.deleteUserById(uid) == 1) {
-            return new Result("success", "删除成功!");
+            return new Result<>(204,"success", "删除成功!");
         } else {
-            return new Result("error", "删除失败!");
+            return new Result<>(500,"error", "删除失败!");
         }
     }
 
     @PutMapping(value = "/user/role")
-    public Result updateUserRoles(Long[] rids, Long id) {
+    public Result<?> updateUserRoles(Long[] rids, Long id) {
         if (userService.updateUserRoles(rids, id) == rids.length) {
-            return new Result("success", "更新成功!");
+            return new Result<>(201,"success", "更新成功!");
         } else {
-            return new Result("error", "更新失败!");
+            return new Result<>(500,"error", "更新失败!");
         }
     }
 }

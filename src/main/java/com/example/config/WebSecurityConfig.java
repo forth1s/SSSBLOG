@@ -1,9 +1,9 @@
 package com.example.config;
 
-import com.example.entity.Result;
+import com.example.common.utils.ResponseUtil;
 import com.example.service.UserService;
-import com.example.utils.RedisUtil;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import com.example.common.utils.RedisUtil;
+import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.authentication.AuthenticationManager;
@@ -20,9 +20,7 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
-import java.io.PrintWriter;
-
-import static com.example.utils.JwtTokenUtil.generateToken;
+import static com.example.common.utils.JwtTokenUtil.generateToken;
 
 /**
  * 想让 Spring Security 中的资源可以匿名访问时，有两种办法：
@@ -32,10 +30,6 @@ import static com.example.utils.JwtTokenUtil.generateToken;
 @EnableWebSecurity
 // 启用方法级别的权限认证
 public class WebSecurityConfig {
-    final UserService userService;
-    private final ObjectMapper objectMapper = new ObjectMapper();
-    private final RedisUtil redisUtil;
-
     private static final String[] PERMIT_ALL_PATHS = {
             "/getcode",
             "/register",
@@ -43,9 +37,10 @@ public class WebSecurityConfig {
             "/reset-password"
     };
 
-    // 若角色无 ROLE_ 前缀，需在 UserDetails 中返回正确角色（如 ROLE_超级管理员）
     private static final String ADMIN_ROLE = "超级管理员";
 
+    private final UserService userService;
+    private final RedisUtil redisUtil;
 
     public WebSecurityConfig(UserService userService, RedisUtil redisUtil) {
         this.userService = userService;
@@ -81,27 +76,16 @@ public class WebSecurityConfig {
                         .loginProcessingUrl("/login") // 登录接口
                         .successHandler(
                                 (_, httpServletResponse, authentication) -> {
-                                    httpServletResponse.setContentType("application/json;charset=utf-8");
-                                    // 添加生成 Token 的逻辑
                                     String username = authentication.getName();
                                     String token = generateToken(username);
-                                    System.out.println(token);
-                                    Result result = new Result("success", "token:" + token);
-                                    try (PrintWriter out = httpServletResponse.getWriter()) {
-                                        out.write(objectMapper.writeValueAsString(result));
-                                        out.flush();
-                                    }
+                                    ResponseUtil.sendSuccessResponse(httpServletResponse, "登录成功", "token:" + token);
                                 }
                         )
                         .failureHandler(
-                                (_, httpServletResponse, _) -> {
-                                    httpServletResponse.setContentType("application/json;charset=utf-8");
-                                    Result result = new Result("error", "登录失败");
-                                    try (PrintWriter out = httpServletResponse.getWriter()) {
-                                        out.write(objectMapper.writeValueAsString(result));
-                                        out.flush();
-                                    }
-                                }
+                                (_, httpServletResponse, e) -> ResponseUtil.sendErrorResponse(httpServletResponse,
+                                        HttpServletResponse.SC_UNAUTHORIZED,
+                                        e.getMessage()
+                                )
                         )
                         .permitAll() // 允许所有用户访问登录页面
                 )
@@ -110,21 +94,18 @@ public class WebSecurityConfig {
                         .invalidateHttpSession(true) // 失效 Session
                         .deleteCookies("JSESSIONID") // 清除 Cookie
                         .permitAll()
+                        .logoutSuccessHandler((_, httpServletResponse, _)->
+                                ResponseUtil.sendSuccessResponse(httpServletResponse, "登出成功"))
                 )
                 // 过滤器顺序：验证码过滤器（登录时验证） -> JWT 认证过滤器（所有请求解析 Token） -> 用户名密码认证过滤器
                 .addFilterBefore(new CaptchaFilter(redisUtil), UsernamePasswordAuthenticationFilter.class)
                 .addFilterBefore(new JwtAuthenticationFilter(userService), UsernamePasswordAuthenticationFilter.class)
                 .csrf(AbstractHttpConfigurer::disable)
                 .exceptionHandling(exception -> exception
-                        .accessDeniedHandler(getAccessDeniedHandler())
-                        .authenticationEntryPoint((_, response, _) -> {
-                            response.setStatus(401);
-                            response.setContentType("application/json;charset=utf-8");
-                            Result result = new Result("error", "未认证，请先登录");
-                            try (PrintWriter out = response.getWriter()) {
-                                out.write(objectMapper.writeValueAsString(result));
-                            }
-                        })
+                        .accessDeniedHandler(accessDeniedHandler())
+                        .authenticationEntryPoint((_, response, e) ->
+//                                ResponseUtil.sendErrorResponse(response, HttpServletResponse.SC_UNAUTHORIZED, "未认证，请先登录"))
+                                ResponseUtil.sendErrorResponse(response, HttpServletResponse.SC_UNAUTHORIZED, e.getMessage()))
                 );
         return http.build();
     }
@@ -142,16 +123,8 @@ public class WebSecurityConfig {
      * 用于处理用户访问被拒绝的情况
      */
     @Bean
-    AccessDeniedHandler getAccessDeniedHandler() {
-        return (_, response, _) -> {
-            response.setStatus(403);
-            response.setContentType("application/json;charset=utf-8");
-            Result result = new Result("error", "权限不足，禁止访问");
-            try (PrintWriter out = response.getWriter()) {
-                out.write(objectMapper.writeValueAsString(result));
-                out.flush();
-            }
-        };
+    public AccessDeniedHandler accessDeniedHandler() {
+        return new AuthenticationAccessDeniedHandler();
     }
 
     /**

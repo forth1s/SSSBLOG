@@ -4,7 +4,7 @@ import com.example.entity.Role;
 import com.example.entity.User;
 import com.example.mapper.RoleMapper;
 import com.example.mapper.UserMapper;
-import com.example.utils.Util;
+import com.example.common.utils.Util;
 import com.example.config.MyPasswordEncoder;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;

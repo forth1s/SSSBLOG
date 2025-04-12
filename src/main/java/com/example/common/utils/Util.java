@@ -1,4 +1,4 @@
-package com.example.utils;
+package com.example.common.utils;
 
 import com.example.entity.User;
 import org.springframework.security.core.context.SecurityContextHolder;

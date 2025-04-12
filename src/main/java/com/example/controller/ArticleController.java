@@ -3,7 +3,7 @@ package com.example.controller;
 import com.example.entity.Article;
 import com.example.entity.Result;
 import com.example.service.ArticleService;
-import com.example.utils.Util;
+import com.example.common.utils.Util;
 import jakarta.servlet.http.HttpServletRequest;
 import org.apache.commons.io.IOUtils;
 import org.slf4j.Logger;
@@ -32,17 +32,17 @@ public class ArticleController {
     }
 
     @PostMapping("/")
-    public Result addNewArticle(Article article) {
+    public Result<?> addNewArticle(Article article) {
         try {
             int result = articleService.addNewArticle(article);
             if (result == 1) {
-                return new Result("success", article.getId() + "");
+                return new Result<>(201,"success", article.getId() + "");
             } else {
-                return new Result("error", article.getState() == 0 ? "文章保存失败!" : "文章发表失败!");
+                return new Result<>(500,"error", article.getState() == 0 ? "文章保存失败!" : "文章发表失败!");
             }
         } catch (Exception e) {
             logger.error("添加文章时发生错误", e);
-            return new Result("error", "添加文章时发生错误");
+            return new Result<>(500,"error", "添加文章时发生错误");
         }
     }
 
@@ -52,9 +52,9 @@ public class ArticleController {
      * @return 返回值为图片的地址
      */
     @PostMapping("/uploadimg")
-    public Result uploadImg(HttpServletRequest req, MultipartFile image) {
+    public Result<?> uploadImg(HttpServletRequest req, MultipartFile image) {
         if (image == null || image.isEmpty()) {
-            return new Result("error", "上传的图片不能为空");
+            return new Result<>(400,"error", "上传的图片不能为空");
         }
         try {
             String filePath = "/blogimg/" + DATE_FORMAT.format(new Date());
@@ -64,17 +64,17 @@ public class ArticleController {
                 if (!imgFolder.mkdirs()) {
                     // 目录创建失败，记录日志并返回错误结果
                     logger.error("无法创建图片存储目录: {}", imgFolderPath);
-                    return new Result("error", "无法创建图片存储目录");
+                    return new Result<>(500,"error", "无法创建图片存储目录");
                 }
             }
             String url = buildImageUrl(req, filePath);
             String imgName = UUID.randomUUID() + "_" + Objects.requireNonNull(image.getOriginalFilename()).replaceAll(" ", "");
             IOUtils.write(image.getBytes(), new FileOutputStream(new File(imgFolder, imgName)));
             url = url + "/" + imgName;
-            return new Result("success", url);
+            return new Result<>(201,"success", url);
         } catch (IOException e) {
             logger.error("上传图片时发生错误", e);
-            return new Result("error", "上传失败!");
+            return new Result<>(500,"error", "上传失败!");
         }
     }
 
@@ -117,34 +117,34 @@ public class ArticleController {
     }
 
     @PutMapping("/dustbin")
-    public Result updateArticleState(@RequestParam("aids") Long[] aids, @RequestParam("state") Integer state) {
+    public Result<?> updateArticleState(@RequestParam("aids") Long[] aids, @RequestParam("state") Integer state) {
         if (aids == null || aids.length == 0) {
-            return new Result("error", "文章 ID 数组不能为空");
+            return new Result<>(400,"error", "文章 ID 数组不能为空");
         }
         try {
             if (articleService.updateArticleState(aids, state) == aids.length) {
-                return new Result("success", "删除成功!");
+                return new Result<>(204,"success", "删除成功!");
             }
-            return new Result("error", "删除失败!");
+            return new Result<>(500,"error", "删除失败!");
         } catch (Exception e) {
             logger.error("更新文章状态时发生错误", e);
-            return new Result("error", "更新文章状态时发生错误");
+            return new Result<>(500,"error", "更新文章状态时发生错误");
         }
     }
 
     @PutMapping("/restore")
-    public Result restoreArticle(@RequestParam("articleId") Integer articleId) {
+    public Result<?> restoreArticle(@RequestParam("articleId") Integer articleId) {
         if (articleId == null) {
-            return new Result("error", "文章 ID 不能为空");
+            return new Result<>(400,"error", "文章 ID 不能为空");
         }
         try {
             if (articleService.restoreArticle(articleId) == 1) {
-                return new Result("success", "还原成功!");
+                return new Result<>(204,"success", "还原成功!");
             }
-            return new Result("error", "还原失败!");
+            return new Result<>(500,"error", "还原失败!");
         } catch (Exception e) {
             logger.error("还原文章时发生错误，文章 ID: {}", articleId, e);
-            return new Result("error", "还原文章时发生错误");
+            return new Result<>(500,"error", "还原文章时发生错误");
         }
     }
 

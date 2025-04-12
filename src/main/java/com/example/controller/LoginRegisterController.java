@@ -20,16 +20,16 @@ public class LoginRegisterController {
     }
 
     @PostMapping("/register")
-    public Result reg(User user) {
+    public Result<?> reg(User user) {
         int flag = userService.reg(user);
         if (flag == 0) {
             //成功
-            return new Result("success", "注册成功!");
+            return new Result<>(201,"success", "注册成功!");
         } else if (flag == 1) {
-            return new Result("error", "用户名重复，注册失败!");
+            return new Result<>(400,"error", "用户名重复，注册失败!");
         } else {
             //失败
-            return new Result("error", "注册失败!");
+            return new Result<>(500,"error", "注册失败!");
         }
     }
 }

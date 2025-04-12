@@ -4,12 +4,14 @@ import com.auth0.jwt.exceptions.JWTDecodeException;
 import com.auth0.jwt.exceptions.TokenExpiredException;
 import com.auth0.jwt.interfaces.DecodedJWT;
 import com.example.service.UserService;
-import com.example.utils.JwtTokenUtil;
+import com.example.common.utils.JwtTokenUtil;
+import com.example.common.utils.ResponseUtil;
 import org.jetbrains.annotations.NotNull;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.UserDetails;
+import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.util.StringUtils;
 
 import jakarta.servlet.FilterChain;
@@ -24,7 +26,6 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
     private static final String TOKEN_PREFIX = "Bearer ";
 
-    // 跳过不需要进行 JWT 认证的接口路径
     private static final String[] AUTH_WHITELIST = {
             "/login",
             "/register",
@@ -44,7 +45,6 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                                     @NotNull HttpServletResponse response,
                                     @NotNull FilterChain filterChain)
             throws IOException, ServletException {
-        // 1. 跳过公共接口（避免循环认证）
         String uri = request.getRequestURI();
         for (String path : AUTH_WHITELIST) {
             if (uri.equals(path)) {
@@ -52,50 +52,38 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                 return;
             }
         }
-        // 2. 从请求头获取 Token
         String authHeader = request.getHeader("Authorization");
         if (!StringUtils.hasText(authHeader) || !authHeader.startsWith(TOKEN_PREFIX)) {
             filterChain.doFilter(request, response);
             return;
         }
 
-        // 3. 提取 Token（去除 Bearer 前缀）
         String token = authHeader.replace(TOKEN_PREFIX, "").trim();
 
         try {
-            // 4. 验证 Token 并获取用户名
             DecodedJWT decodedJWT = JwtTokenUtil.validateToken(token);
             String username = decodedJWT.getSubject();
 
-            // 5. 从 UserService 加载用户详情（包含角色信息）
             UserDetails userDetails = userService.loadUserByUsername(username);
 
-            // 6. 创建 Authentication 对象并设置到 SecurityContext
-            if (userDetails != null && userDetails.isEnabled()) { // 检查用户是否可用
+            if (userDetails != null && userDetails.isEnabled()) {
                 Authentication authentication = new UsernamePasswordAuthenticationToken(
                         userDetails,
                         null,
-                        userDetails.getAuthorities() // 从 UserDetails 中获取角色权限
+                        userDetails.getAuthorities()
                 );
                 SecurityContextHolder.getContext().setAuthentication(authentication);
             }
+            filterChain.doFilter(request, response);
         } catch (TokenExpiredException e) {
-            handleTokenException(response, HttpServletResponse.SC_UNAUTHORIZED, "Token已过期，请重新登录");
-            return;
+            ResponseUtil.sendErrorResponse(response, HttpServletResponse.SC_UNAUTHORIZED, "Token已过期，请重新登录");
         } catch (JWTDecodeException e) {
-            handleTokenException(response, HttpServletResponse.SC_UNAUTHORIZED, "Token解析错误，请检查Token");
-            return;
+            ResponseUtil.sendErrorResponse(response, HttpServletResponse.SC_UNAUTHORIZED, "Token解析错误，请检查Token");
+        } catch (UsernameNotFoundException e) { // 显式捕获用户不存在异常
+            ResponseUtil.sendErrorResponse(response, HttpServletResponse.SC_UNAUTHORIZED, "用户不存在");
         } catch (Exception e) {
-            handleTokenException(response, HttpServletResponse.SC_INTERNAL_SERVER_ERROR, "Token验证发生未知错误");
-            return;
+            // 保留通用异常处理，但建议日志记录具体错误
+            ResponseUtil.sendErrorResponse(response, HttpServletResponse.SC_INTERNAL_SERVER_ERROR, "认证失败");
         }
-
-        filterChain.doFilter(request, response);
-    }
-
-    private void handleTokenException(HttpServletResponse response, int status, String message) throws IOException {
-        response.setStatus(status);
-        response.setContentType("application/json;charset=utf-8");
-        response.getWriter().write("{\"error\": \"" + message + "\"}");
     }
 }

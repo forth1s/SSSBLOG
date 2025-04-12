@@ -1,6 +1,6 @@
 package com.example.controller;
 
-import com.example.utils.CaptchaUtil;
+import com.example.common.utils.CaptchaUtil;
 import com.example.entity.Result;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpSession;
@@ -13,7 +13,7 @@ import java.awt.image.BufferedImage;
 import java.io.ByteArrayOutputStream;
 import java.util.Base64;
 import java.util.concurrent.TimeUnit;
-import com.example.utils.RedisUtil;
+import com.example.common.utils.RedisUtil;
 import org.springframework.util.StringUtils;
 
 @RestController
@@ -38,13 +38,13 @@ public class CaptchaController {
      * @return 统一响应格式的结果
      */
     @RequestMapping("/getcode")
-    public Result getCode(HttpServletRequest request) {
+    public Result<?> getCode(HttpServletRequest request) {
         try {
             HttpSession session = request.getSession();
             String sessionId = session.getId();
 
             if (isRequestTooFrequent(sessionId)) {
-                return new Result("error", "请求过于频繁，请稍后再试");
+                return new Result<>(429, "请求过于频繁，请稍后再试", null);
             }
 
             Object[] objs = CaptchaUtil.newBuilder()
@@ -69,9 +69,9 @@ public class CaptchaController {
             byte[] imageBytes = baos.toByteArray();
             String base64Image = Base64.getEncoder().encodeToString(imageBytes);
 
-            return new Result("success", "data:image/png;base64," + base64Image);
+            return new Result<>(200, "success","data:image/png;base64," + base64Image);
         } catch (Exception e) {
-            return new Result("error", "生成验证码时发生错误，请稍后再试");
+            return new Result<>(500,"error", "生成验证码时发生错误，请稍后再试");
         }
     }
 

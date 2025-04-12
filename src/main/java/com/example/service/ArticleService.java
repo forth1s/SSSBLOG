@@ -3,7 +3,7 @@ package com.example.service;
 import com.example.entity.Article;
 import com.example.mapper.ArticleMapper;
 import com.example.mapper.TagMapper;
-import com.example.utils.Util;
+import com.example.common.utils.Util;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;

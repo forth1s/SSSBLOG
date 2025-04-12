@@ -1,4 +1,4 @@
-package com.example.utils;
+package com.example.common.utils;
 
 import java.awt.*;
 import java.awt.geom.AffineTransform;

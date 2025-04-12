@@ -2,7 +2,7 @@ package com.example.controller;
 
 import com.example.entity.Result;
 import com.example.service.UserService;
-import com.example.utils.Util;
+import com.example.common.utils.Util;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -49,10 +49,10 @@ public class UserController {
     }
 
     @PutMapping(value = "/updateUserEmail")
-    public Result updateUserEmail(String email) {
+    public Result<?> updateUserEmail(String email) {
         if (userService.updateUserEmail(email) == 1) {
-            return new Result("success", "开启成功!");
+            return new Result<>(204,"success", "开启成功!");
         }
-        return new Result("error", "开启失败!");
+        return new Result<>(500,"error", "开启失败!");
     }
 }
