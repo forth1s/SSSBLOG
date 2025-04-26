@@ -1,8 +1,11 @@
 package com.example.config;
 
 import com.auth0.jwt.exceptions.JWTDecodeException;
+import com.auth0.jwt.exceptions.JWTVerificationException;
 import com.auth0.jwt.exceptions.TokenExpiredException;
 import com.auth0.jwt.interfaces.DecodedJWT;
+import com.example.common.exception.ServerException;
+import com.example.common.exception.UnauthorizedException;
 import com.example.service.UserService;
 import com.example.common.utils.JwtTokenUtil;
 import com.example.common.utils.ResponseUtil;
@@ -75,15 +78,11 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                 SecurityContextHolder.getContext().setAuthentication(authentication);
             }
             filterChain.doFilter(request, response);
-        } catch (TokenExpiredException e) {
-            ResponseUtil.sendErrorResponse(response, HttpServletResponse.SC_UNAUTHORIZED, "Token已过期，请重新登录");
-        } catch (JWTDecodeException e) {
-            ResponseUtil.sendErrorResponse(response, HttpServletResponse.SC_UNAUTHORIZED, "Token解析错误，请检查Token");
+        } catch (JWTVerificationException e) {
+            ResponseUtil.sendUnauthorizedResponse(response, e.getMessage());
+//            throw new UnauthorizedException(HttpServletResponse.SC_UNAUTHORIZED, e.getMessage());
         } catch (UsernameNotFoundException e) { // 显式捕获用户不存在异常
-            ResponseUtil.sendErrorResponse(response, HttpServletResponse.SC_UNAUTHORIZED, "用户不存在");
-        } catch (Exception e) {
-            // 保留通用异常处理，但建议日志记录具体错误
-            ResponseUtil.sendErrorResponse(response, HttpServletResponse.SC_INTERNAL_SERVER_ERROR, "认证失败");
+            ResponseUtil.sendUnauthorizedResponse(response,e.getMessage());
         }
     }
 }

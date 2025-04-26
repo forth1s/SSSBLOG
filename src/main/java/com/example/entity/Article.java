@@ -24,4 +24,6 @@ public class Article {
     private String cateName;
     private List<Tag> tags;
     private String stateStr;
+    private Integer likeCount; // 新增点赞数
+    private Integer dislikeCount; // 新增踩数
 }

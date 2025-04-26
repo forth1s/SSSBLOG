@@ -1,6 +1,8 @@
 package com.example.config;
 
 import com.example.common.exception.ForbiddenException;
+import com.example.common.exception.BadRequestException;
+import com.example.common.exception.ServerException;
 import com.example.common.utils.RedisUtil;
 import com.example.common.utils.ResponseUtil;
 import jakarta.annotation.Nonnull;
@@ -39,8 +41,10 @@ public class CaptchaFilter extends OncePerRequestFilter {
                 redisUtil.delete(verifyCodeKey);
             }
             filterChain.doFilter(request, response);
-        } catch (ForbiddenException e) {
-            ResponseUtil.sendErrorResponse(response, HttpServletResponse.SC_BAD_REQUEST, e.getMessage());
+        } catch (BadRequestException e) {
+            ResponseUtil.sendErrorResponse(response, e.getCode(), e.getMessage());
+        } catch (Exception e){
+            ResponseUtil.sendServerErrorResponse(response, e.getMessage());
         }
     }
 
@@ -67,7 +71,7 @@ public class CaptchaFilter extends OncePerRequestFilter {
             return false;
         }
         if (!"POST".equals(method)) {
-            throw new ForbiddenException(HttpServletResponse.SC_METHOD_NOT_ALLOWED,"访问接口的请求方式错误");
+            throw new BadRequestException(HttpServletResponse.SC_METHOD_NOT_ALLOWED,"访问接口的请求方式错误");
         }
         return true;
     }
@@ -75,16 +79,16 @@ public class CaptchaFilter extends OncePerRequestFilter {
     private void validateCaptcha(HttpServletRequest request, String verifyCodeKey) {
         String inputCaptcha = request.getParameter("captcha");
         if (!StringUtils.hasLength(inputCaptcha)) {
-            throw new ForbiddenException(HttpServletResponse.SC_BAD_REQUEST, "验证码不能为空");
+            throw new BadRequestException(HttpServletResponse.SC_BAD_REQUEST, "验证码不能为空");
         }
 
         String correctCaptcha = (String) redisUtil.get(verifyCodeKey);
         if (!StringUtils.hasLength(correctCaptcha)) {
-            throw new ForbiddenException(HttpServletResponse.SC_BAD_REQUEST, "验证码已失效，请重新获取");
+            throw new BadRequestException(HttpServletResponse.SC_BAD_REQUEST, "验证码失效，请重新获取");
         }
 
         if (!correctCaptcha.equalsIgnoreCase(inputCaptcha)) {
-            throw new ForbiddenException(HttpServletResponse.SC_BAD_REQUEST, "验证码输入错误，请重新获取");
+            throw new BadRequestException(HttpServletResponse.SC_BAD_REQUEST, "验证码错误，请重新获取");
         }
     }
 }

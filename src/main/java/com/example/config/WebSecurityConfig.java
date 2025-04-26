@@ -3,7 +3,7 @@ package com.example.config;
 import com.example.common.utils.ResponseUtil;
 import com.example.service.UserService;
 import com.example.common.utils.RedisUtil;
-import jakarta.servlet.http.HttpServletResponse;
+
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.authentication.AuthenticationManager;
@@ -15,8 +15,8 @@ import org.springframework.security.config.annotation.web.configuration.WebSecur
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.web.SecurityFilterChain;
-import org.springframework.security.web.access.AccessDeniedHandler;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
+import org.springframework.stereotype.Component;
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
@@ -26,6 +26,7 @@ import static com.example.common.utils.JwtTokenUtil.generateToken;
  * 想让 Spring Security 中的资源可以匿名访问时，有两种办法：
  * 1、走 Spring Security 过滤器链，但是可以匿名访问。
  */
+@Component
 @Configuration
 @EnableWebSecurity
 // 启用方法级别的权限认证
@@ -73,39 +74,47 @@ public class WebSecurityConfig {
                         .anyRequest().authenticated()
                 )
                 .formLogin(fLogin -> fLogin
-                        .loginProcessingUrl("/login") // 登录接口
-                        .successHandler(
-                                (_, httpServletResponse, authentication) -> {
-                                    String username = authentication.getName();
-                                    String token = generateToken(username);
-                                    ResponseUtil.sendSuccessResponse(httpServletResponse, "登录成功", "token:" + token);
-                                }
-                        )
-                        .failureHandler(
-                                (_, httpServletResponse, e) -> ResponseUtil.sendErrorResponse(httpServletResponse,
-                                        HttpServletResponse.SC_UNAUTHORIZED,
-                                        e.getMessage()
+                                .loginProcessingUrl("/login") // 登录接口
+                                .successHandler(
+                                        (_, httpServletResponse, authentication) -> {
+                                            String username = authentication.getName();
+                                            try {
+                                                String token = generateToken(username);
+                                                ResponseUtil.sendSuccessResponse(httpServletResponse, "登录成功", "token:" + token);
+                                            } catch (Exception e) {
+                                                ResponseUtil.sendServerErrorResponse(httpServletResponse, e.getMessage());
+//                                        throw new ServerException(HttpServletResponse.SC_INTERNAL_SERVER_ERROR, e.getMessage());
+                                            }
+                                        }
                                 )
-                        )
-                        .permitAll() // 允许所有用户访问登录页面
+                                .failureHandler(
+                                        (_, httpServletResponse, e) -> {
+                                            ResponseUtil.sendUnauthorizedResponse(httpServletResponse, e.getMessage());
+                                        }
+                                )
+                                .permitAll() // 允许所有用户访问登录页面
                 )
                 .logout(logout -> logout
                         .logoutUrl("/logout") // 登出接口
                         .invalidateHttpSession(true) // 失效 Session
                         .deleteCookies("JSESSIONID") // 清除 Cookie
                         .permitAll()
-                        .logoutSuccessHandler((_, httpServletResponse, _)->
+                        .logoutSuccessHandler((_, httpServletResponse, _) ->
                                 ResponseUtil.sendSuccessResponse(httpServletResponse, "登出成功"))
                 )
                 // 过滤器顺序：验证码过滤器（登录时验证） -> JWT 认证过滤器（所有请求解析 Token） -> 用户名密码认证过滤器
                 .addFilterBefore(new CaptchaFilter(redisUtil), UsernamePasswordAuthenticationFilter.class)
-                .addFilterBefore(new JwtAuthenticationFilter(userService), UsernamePasswordAuthenticationFilter.class)
+//                .addFilterBefore(new JwtAuthenticationFilter(userService), UsernamePasswordAuthenticationFilter.class)
                 .csrf(AbstractHttpConfigurer::disable)
-                .exceptionHandling(exception -> exception
-                        .accessDeniedHandler(accessDeniedHandler())
-                        .authenticationEntryPoint((_, response, e) ->
-//                                ResponseUtil.sendErrorResponse(response, HttpServletResponse.SC_UNAUTHORIZED, "未认证，请先登录"))
-                                ResponseUtil.sendErrorResponse(response, HttpServletResponse.SC_UNAUTHORIZED, e.getMessage()))
+                .exceptionHandling(
+                        exception -> exception
+                                .accessDeniedHandler(new NotEnoughAccessDeniedHandler())
+                                .authenticationEntryPoint((_, httpServletResponse, e) -> {
+                                            System.out.println("CaptchaFilter Excepti十多个房价大幅高开杀个发on: " + e);
+                                            ResponseUtil.sendUnauthorizedResponse(httpServletResponse, e.getMessage());
+//                               throw new UnauthorizedException(HttpServletResponse.SC_UNAUTHORIZED, e.getMessage());
+                                        }
+                                )
                 );
         return http.build();
     }
@@ -117,14 +126,6 @@ public class WebSecurityConfig {
                 "/static/**",
                 "/templates/**"
         );
-    }
-
-    /**
-     * 用于处理用户访问被拒绝的情况
-     */
-    @Bean
-    public AccessDeniedHandler accessDeniedHandler() {
-        return new AuthenticationAccessDeniedHandler();
     }
 
     /**

@@ -4,4 +4,7 @@
     <settings>
         <setting name="logImpl" value="STDOUT_LOGGING" />
     </settings>
+    <typeHandlers>
+        <typeHandler handler="com.example.common.utils.DateTypeUtil"/>
+    </typeHandlers>
 </configuration>

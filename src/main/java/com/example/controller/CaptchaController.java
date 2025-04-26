@@ -71,7 +71,7 @@ public class CaptchaController {
 
             return new Result<>(200, "success","data:image/png;base64," + base64Image);
         } catch (Exception e) {
-            return new Result<>(500,"error", "生成验证码时发生错误，请稍后再试");
+            return new Result<>(500,"error", "生成验证码错误："+e.getMessage());
         }
     }
 

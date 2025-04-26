@@ -7,12 +7,23 @@ import org.apache.ibatis.type.TypeHandler;
 
 import java.sql.*;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.ZoneId;
+import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
 
 @MappedJdbcTypes(JdbcType.DATE)
 @MappedTypes(String.class)
 public class DateTypeUtil implements TypeHandler<String> {
-    private static final DateTimeFormatter FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
+    // 定义东八区时区
+    public static final ZoneId ZONE_SHANGHAI = ZoneId.of("Asia/Shanghai");
+    public static final DateTimeFormatter FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
+    // 新增静态方法，用于格式化 LocalDateTime
+    public static String formatDateTime(ZonedDateTime zonedDateTime) {
+        // 将带时区的时间转换为东八区的 LocalDateTime 再格式化
+        LocalDateTime localDateTime = zonedDateTime.withZoneSameInstant(ZONE_SHANGHAI).toLocalDateTime();
+        return localDateTime.format(FORMATTER);
+    }
 
     @Override
     public void setParameter(PreparedStatement ps, int i, String parameter, JdbcType jdbcType) throws SQLException {

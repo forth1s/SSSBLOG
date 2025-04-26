@@ -4,6 +4,7 @@ import com.auth0.jwt.JWT;
 import com.auth0.jwt.JWTCreator;
 import com.auth0.jwt.JWTVerifier;
 import com.auth0.jwt.algorithms.Algorithm;
+import com.auth0.jwt.exceptions.JWTCreationException;
 import com.auth0.jwt.exceptions.JWTVerificationException;
 import com.auth0.jwt.interfaces.DecodedJWT;
 
@@ -29,8 +30,8 @@ public class JwtTokenUtil {
             builder.withExpiresAt(new Date(System.currentTimeMillis() + EXPIRATION_TIME));
             // 使用算法对 JWT 进行签名并生成 Token
             return builder.sign(algorithm);
-        }catch(Exception e){
-            throw new RuntimeException("token生成失败");
+        }catch(JWTCreationException e){
+            throw new JWTCreationException("token生成失败",new Throwable("token生成失败"));
         }
     }
 
@@ -46,7 +47,7 @@ public class JwtTokenUtil {
             return verifier.verify(token);
         } catch (JWTVerificationException e) {
             // 验证失败，可能是签名无效、过期等原因
-            throw new RuntimeException("token验证失败");
+            throw new JWTVerificationException("token验证失败");
         }
     }
 
@@ -60,8 +61,8 @@ public class JwtTokenUtil {
                 String username = decodedJWT.getSubject();
                 return generateToken(username);
             }
-        } catch (RuntimeException e) {
-            throw new RuntimeException("token更新失败");
+        } catch (JWTCreationException e) {
+            throw new JWTCreationException("token更新失败",new Throwable("token更新失败"));
         }
         return null;
     }
