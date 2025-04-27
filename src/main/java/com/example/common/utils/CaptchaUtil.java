@@ -16,7 +16,7 @@ public class CaptchaUtil {
             'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'P', 'Q', 'R', 'S', 'T', 'U', 'V', 'W', 'X', 'Y', 'Z'
     };
     // 默认字符数量
-    private static final int DEFAULT_SIZE = 4;
+    private static final int DEFAULT_SIZE = 6;
     // 默认干扰线数量
     private static final int DEFAULT_LINES = 5;
     // 默认宽度
