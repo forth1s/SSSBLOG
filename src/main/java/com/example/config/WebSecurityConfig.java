@@ -80,7 +80,7 @@ public class WebSecurityConfig {
                                             String username = authentication.getName();
                                             try {
                                                 String token = generateToken(username);
-                                                ResponseUtil.sendSuccessResponse(httpServletResponse, "登录成功", "token:" + token);
+                                                ResponseUtil.sendSuccessResponse(httpServletResponse, "登录成功", token);
                                             } catch (Exception e) {
                                                 ResponseUtil.sendServerErrorResponse(httpServletResponse, e.getMessage());
 //                                        throw new ServerException(HttpServletResponse.SC_INTERNAL_SERVER_ERROR, e.getMessage());
@@ -96,15 +96,15 @@ public class WebSecurityConfig {
                 )
                 .logout(logout -> logout
                         .logoutUrl("/logout") // 登出接口
-                        .invalidateHttpSession(true) // 失效 Session
-                        .deleteCookies("JSESSIONID") // 清除 Cookie
-                        .permitAll()
+//                        .invalidateHttpSession(true) // 由于采用无状态模式，登出时服务器无需销毁 Session（invalidateHttpSession实际无效）
+//                        .deleteCookies("JSESSIONID") // 清除 Cookie
+//                        .permitAll()
                         .logoutSuccessHandler((_, httpServletResponse, _) ->
                                 ResponseUtil.sendSuccessResponse(httpServletResponse, "登出成功"))
                 )
                 // 过滤器顺序：验证码过滤器（登录时验证） -> JWT 认证过滤器（所有请求解析 Token） -> 用户名密码认证过滤器
                 .addFilterBefore(new CaptchaFilter(redisUtil), UsernamePasswordAuthenticationFilter.class)
-//                .addFilterBefore(new JwtAuthenticationFilter(userService), UsernamePasswordAuthenticationFilter.class)
+                .addFilterBefore(new JwtAuthenticationFilter(userService), UsernamePasswordAuthenticationFilter.class)
                 .csrf(AbstractHttpConfigurer::disable)
                 .exceptionHandling(
                         exception -> exception

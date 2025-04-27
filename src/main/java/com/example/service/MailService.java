@@ -11,6 +11,7 @@ import com.example.common.utils.RedisUtil;
 import jakarta.mail.MessagingException;
 import jakarta.mail.internet.MimeMessage;
 import jakarta.servlet.http.HttpServletResponse;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.mail.javamail.MimeMessageHelper;
@@ -22,6 +23,7 @@ import java.util.Date;
 import org.springframework.amqp.rabbit.annotation.RabbitListener;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
 
+@Slf4j
 @Service
 public class MailService {
     @Value("${spring.mail.username}")
@@ -106,7 +108,8 @@ public class MailService {
             mailSender.send(mimeMessage);
         } catch (MessagingException e) {
             // 处理邮件发送失败的情况，例如记录日志
-            System.err.println("邮件发送失败: " + e.getMessage());
+            log.error("{} 邮件发送失败: {}" ,e, e.getMessage());
+//            System.err.println("邮件发送失败: " + e.getMessage());
             // 将邮件异常转换为已定义的 ServerException
             throw new ServerException(HttpServletResponse.SC_INTERNAL_SERVER_ERROR, "邮件发送失败："+ e.getMessage());
         }

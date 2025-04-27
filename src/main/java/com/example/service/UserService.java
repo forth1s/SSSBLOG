@@ -6,6 +6,7 @@ import com.example.mapper.RoleMapper;
 import com.example.mapper.UserMapper;
 import com.example.common.utils.Util;
 import com.example.config.MyPasswordEncoder;
+import org.springframework.dao.DuplicateKeyException;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
@@ -42,26 +43,32 @@ public class UserService implements UserDetailsService {
     }
 
     /**
-     * @return 0表示成功
+     * @return
+     * 0表示成功
      * 1表示用户名重复
      * 2表示失败
      */
     public int reg(User user) {
-        User loadUserByUsername = userMapper.loadUserByUsername(user.getUsername());
-        if (loadUserByUsername != null) {
-            return 1;
-        }
-        //插入用户,插入之前先对密码进行加密
-        user.setPassword(passwordEncoder.encode(user.getPassword()));
-        user.setEnabled(true);//用户可用
-        long result = userMapper.reg(user);
-        //配置用户的角色，默认都是普通用户
-        String[] roles = new String[]{"2"};
-        int i = rolesMapper.addRoles(roles, user.getId());
-        boolean b = i == roles.length && result == 1;
-        if (b) {
-            return 0;
-        } else {
+        try {
+            // 直接插入用户（依赖数据库唯一索引）
+            // 避免先查后插，多个线程可能同时通过检查，然后都执行插入，导致数据库出现重复数据。
+            user.setPassword(passwordEncoder.encode(user.getPassword()));
+            user.setEnabled(true);
+            long result = userMapper.reg(user);
+
+            // 插入成功后配置角色
+            if (result == 1) {
+                String[] roles = new String[]{"2"};
+                int i = rolesMapper.addRoles(roles, user.getId());
+                return i == roles.length ? 0 : 2;
+            } else {
+                return 2;
+            }
+        } catch (DuplicateKeyException e) {
+            // 捕获唯一约束冲突异常
+            return 1; // 账号已存在
+        } catch (Exception e) {
+            // 其他异常处理
             return 2;
         }
     }

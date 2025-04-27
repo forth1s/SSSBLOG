@@ -29,13 +29,13 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
     private static final String TOKEN_PREFIX = "Bearer ";
 
-    private static final String[] AUTH_WHITELIST = {
-            "/login",
-            "/register",
-            "/sendMail",
-            "/reset-password",
-            "/getcode"
-    };
+//    private static final String[] AUTH_WHITELIST = {
+//            "/login",
+//            "/register",
+//            "/sendMail",
+//            "/reset-password",
+//            "/getcode"
+//    };
 
     private final UserService userService;
 
@@ -48,41 +48,30 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                                     @NotNull HttpServletResponse response,
                                     @NotNull FilterChain filterChain)
             throws IOException, ServletException {
-        String uri = request.getRequestURI();
-        for (String path : AUTH_WHITELIST) {
-            if (uri.equals(path)) {
-                filterChain.doFilter(request, response);
-                return;
-            }
-        }
         String authHeader = request.getHeader("Authorization");
-        if (!StringUtils.hasText(authHeader) || !authHeader.startsWith(TOKEN_PREFIX)) {
-            filterChain.doFilter(request, response);
-            return;
-        }
 
-        String token = authHeader.replace(TOKEN_PREFIX, "").trim();
+        if (authHeader != null && authHeader.startsWith("Bearer ")) {
+            String token = authHeader.substring(7);
 
-        try {
-            DecodedJWT decodedJWT = JwtTokenUtil.validateToken(token);
-            String username = decodedJWT.getSubject();
+            try {
+                DecodedJWT decodedJWT = JwtTokenUtil.validateToken(token);
+                String username = decodedJWT.getSubject();
 
-            UserDetails userDetails = userService.loadUserByUsername(username);
+                UserDetails userDetails = userService.loadUserByUsername(username);
+                UsernamePasswordAuthenticationToken authentication =
+                        new UsernamePasswordAuthenticationToken(
+                                userDetails, null, userDetails.getAuthorities()
+                        );
 
-            if (userDetails != null && userDetails.isEnabled()) {
-                Authentication authentication = new UsernamePasswordAuthenticationToken(
-                        userDetails,
-                        null,
-                        userDetails.getAuthorities()
-                );
                 SecurityContextHolder.getContext().setAuthentication(authentication);
-            }
-            filterChain.doFilter(request, response);
-        } catch (JWTVerificationException e) {
-            ResponseUtil.sendUnauthorizedResponse(response, e.getMessage());
+            } catch (JWTVerificationException e) {
+                ResponseUtil.sendUnauthorizedResponse(response, e.getMessage());
 //            throw new UnauthorizedException(HttpServletResponse.SC_UNAUTHORIZED, e.getMessage());
-        } catch (UsernameNotFoundException e) { // 显式捕获用户不存在异常
-            ResponseUtil.sendUnauthorizedResponse(response,e.getMessage());
+            } catch (UsernameNotFoundException e) { // 显式捕获用户不存在异常
+                ResponseUtil.sendUnauthorizedResponse(response,e.getMessage());
+            }
         }
+
+        filterChain.doFilter(request, response);
     }
 }
