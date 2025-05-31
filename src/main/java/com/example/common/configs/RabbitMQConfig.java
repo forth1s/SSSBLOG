@@ -1,4 +1,4 @@
-package com.example.config;
+package com.example.common.configs;
 
 import org.jetbrains.annotations.NotNull;
 import org.springframework.amqp.core.Queue;

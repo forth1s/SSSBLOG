@@ -6,51 +6,69 @@ import org.apache.ibatis.type.MappedTypes;
 import org.apache.ibatis.type.TypeHandler;
 
 import java.sql.*;
-import java.time.LocalDate;
-import java.time.LocalDateTime;
-import java.time.ZoneId;
-import java.time.ZonedDateTime;
+import java.time.*;
 import java.time.format.DateTimeFormatter;
 
-@MappedJdbcTypes(JdbcType.DATE)
-@MappedTypes(String.class)
-public class DateTypeUtil implements TypeHandler<String> {
+@MappedJdbcTypes(JdbcType.TIMESTAMP)
+@MappedTypes(LocalDateTime.class)
+public class DateTypeUtil implements TypeHandler<LocalDateTime> {
     // 定义东八区时区
     public static final ZoneId ZONE_SHANGHAI = ZoneId.of("Asia/Shanghai");
-    public static final DateTimeFormatter FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
-    // 新增静态方法，用于格式化 LocalDateTime
+    public static final DateTimeFormatter DATE_TIME_FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
+    public static final DateTimeFormatter DATE_FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd");
+
+    // 格式化ZonedDateTime为东八区时间字符串
     public static String formatDateTime(ZonedDateTime zonedDateTime) {
-        // 将带时区的时间转换为东八区的 LocalDateTime 再格式化
-        LocalDateTime localDateTime = zonedDateTime.withZoneSameInstant(ZONE_SHANGHAI).toLocalDateTime();
-        return localDateTime.format(FORMATTER);
+        return zonedDateTime.withZoneSameInstant(ZONE_SHANGHAI)
+                .format(DATE_TIME_FORMATTER);
+    }
+
+    // 格式化LocalDateTime为字符串
+    public static String formatDateTime(LocalDateTime localDateTime) {
+        return localDateTime.format(DATE_TIME_FORMATTER);
+    }
+
+    // 格式化LocalDate为字符串
+    public static String formatDate(LocalDate localDate) {
+        return localDate.format(DATE_FORMATTER);
+    }
+
+    // 解析字符串为LocalDateTime
+    public static LocalDateTime parseDateTime(String dateTimeStr) {
+        return LocalDateTime.parse(dateTimeStr, DATE_TIME_FORMATTER);
+    }
+
+    // 解析字符串为LocalDate
+    public static LocalDate parseDate(String dateStr) {
+        return LocalDate.parse(dateStr, DATE_FORMATTER);
     }
 
     @Override
-    public void setParameter(PreparedStatement ps, int i, String parameter, JdbcType jdbcType) throws SQLException {
+    public void setParameter(PreparedStatement ps, int i, LocalDateTime parameter, JdbcType jdbcType) throws SQLException {
         if (parameter == null) {
-            ps.setNull(i, jdbcType.TYPE_CODE);
+            ps.setNull(i, Types.TIMESTAMP);
         } else {
-            // 将 String 类型的日期转换为 java.sql.Date 类型
-            LocalDate localDate = LocalDate.parse(parameter, FORMATTER);
-            ps.setDate(i, java.sql.Date.valueOf(localDate));
+            // 将LocalDateTime转换为带时区的时间戳
+            ZonedDateTime zonedDateTime = parameter.atZone(ZONE_SHANGHAI);
+            ps.setTimestamp(i, Timestamp.valueOf(zonedDateTime.toLocalDateTime()));
         }
     }
 
     @Override
-    public String getResult(ResultSet rs, String columnName) throws SQLException {
-        Date date = rs.getDate(columnName);
-        return date == null ? null : date.toLocalDate().format(FORMATTER);
+    public LocalDateTime getResult(ResultSet rs, String columnName) throws SQLException {
+        Timestamp timestamp = rs.getTimestamp(columnName);
+        return timestamp == null ? null : timestamp.toLocalDateTime();
     }
 
     @Override
-    public String getResult(ResultSet rs, int columnIndex) throws SQLException {
-        Date date = rs.getDate(columnIndex);
-        return date == null ? null : date.toLocalDate().format(FORMATTER);
+    public LocalDateTime getResult(ResultSet rs, int columnIndex) throws SQLException {
+        Timestamp timestamp = rs.getTimestamp(columnIndex);
+        return timestamp == null ? null : timestamp.toLocalDateTime();
     }
 
     @Override
-    public String getResult(CallableStatement cs, int columnIndex) throws SQLException {
-        Date date = cs.getDate(columnIndex);
-        return date == null ? null : date.toLocalDate().format(FORMATTER);
+    public LocalDateTime getResult(CallableStatement cs, int columnIndex) throws SQLException {
+        Timestamp timestamp = cs.getTimestamp(columnIndex);
+        return timestamp == null ? null : timestamp.toLocalDateTime();
     }
 }

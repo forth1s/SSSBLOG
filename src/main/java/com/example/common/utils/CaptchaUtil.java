@@ -1,5 +1,7 @@
 package com.example.common.utils;
 
+import com.example.common.exceptions.ServerException;
+
 import java.awt.*;
 import java.awt.geom.AffineTransform;
 import java.awt.image.BufferedImage;
@@ -40,7 +42,7 @@ public class CaptchaUtil {
     private final Color backgroundColor;
 
     /**
-     * 验证码图片构造器对象
+     * 验证码构造器对象
      */
     public static class Builder {
         private int size = DEFAULT_SIZE;
@@ -120,16 +122,26 @@ public class CaptchaUtil {
     }
 
     /**
-     * @return 生成随机验证码及图片
-     * Object[0]：验证码字符串；
-     * Object[1]：验证码图片。
+     * 生成随机验证码字符串
      */
-    public Object[] createImage() {
+    public String generateCode() {
         StringBuilder sb = new StringBuilder();
+        for (int i = 0; i < size; i++) {
+            int n = ThreadLocalRandom.current().nextInt(CHARS.length);
+            sb.append(CHARS[n]);
+        }
+        return sb.toString();
+    }
+
+    /**
+     * 根据验证码字符串生成图片
+     */
+    public BufferedImage createImage(String code) {
         // 创建空白图片
         BufferedImage image = new BufferedImage(width, height, BufferedImage.TYPE_INT_RGB);
         // 获取图片画笔
         Graphics2D graphic = image.createGraphics();
+
         try {
             // 设置抗锯齿
             graphic.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
@@ -163,15 +175,8 @@ public class CaptchaUtil {
                 // 计算当前字符绘制的X轴坐标
                 int x = (i * codeWidth) + (codeWidth / 2);
 
-                // 取随机字符索引
-                int n = ThreadLocalRandom.current().nextInt(CHARS.length);
-                // 得到字符文本
-                String code = String.valueOf(CHARS[n]);
                 // 画字符
-                graphic.drawString(code, x, y);
-
-                // 记录字符
-                sb.append(code);
+                graphic.drawString(String.valueOf(code.charAt(i)), x, y);
             }
 
             // 画干扰线
@@ -186,13 +191,15 @@ public class CaptchaUtil {
                         ThreadLocalRandom.current().nextInt(height)
                 );
             }
-        } finally {
+        } catch (RuntimeException e) {
+            throw new ServerException(500, e.getMessage());
+        }
+        finally {
             // 释放图形上下文资源
             if (graphic != null) {
                 graphic.dispose();
             }
         }
-        // 返回验证码和图片
-        return new Object[]{sb.toString(), image};
+        return image;
     }
 }

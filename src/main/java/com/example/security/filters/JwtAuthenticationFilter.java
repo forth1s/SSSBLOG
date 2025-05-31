@@ -1,21 +1,15 @@
-package com.example.config;
+package com.example.security.filters;
 
-import com.auth0.jwt.exceptions.JWTDecodeException;
 import com.auth0.jwt.exceptions.JWTVerificationException;
-import com.auth0.jwt.exceptions.TokenExpiredException;
 import com.auth0.jwt.interfaces.DecodedJWT;
-import com.example.common.exception.ServerException;
-import com.example.common.exception.UnauthorizedException;
+import com.example.security.handlers.SecurityExceptionHandler;
 import com.example.service.UserService;
 import com.example.common.utils.JwtTokenUtil;
-import com.example.common.utils.ResponseUtil;
 import org.jetbrains.annotations.NotNull;
+import org.springframework.security.authentication.AuthenticationServiceException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
-import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.UserDetails;
-import org.springframework.security.core.userdetails.UsernameNotFoundException;
-import org.springframework.util.StringUtils;
 
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
@@ -26,21 +20,12 @@ import org.springframework.web.filter.OncePerRequestFilter;
 import java.io.IOException;
 
 public class JwtAuthenticationFilter extends OncePerRequestFilter {
-
-    private static final String TOKEN_PREFIX = "Bearer ";
-
-//    private static final String[] AUTH_WHITELIST = {
-//            "/login",
-//            "/register",
-//            "/sendMail",
-//            "/reset-password",
-//            "/getcode"
-//    };
-
     private final UserService userService;
+    private final SecurityExceptionHandler exceptionHandler;
 
-    public JwtAuthenticationFilter(UserService userService) {
+    public JwtAuthenticationFilter(UserService userService, SecurityExceptionHandler exceptionHandler) {
         this.userService = userService;
+        this.exceptionHandler = exceptionHandler;
     }
 
     @Override
@@ -58,20 +43,18 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                 String username = decodedJWT.getSubject();
 
                 UserDetails userDetails = userService.loadUserByUsername(username);
-                UsernamePasswordAuthenticationToken authentication =
-                        new UsernamePasswordAuthenticationToken(
-                                userDetails, null, userDetails.getAuthorities()
-                        );
-
+                UsernamePasswordAuthenticationToken authentication = new UsernamePasswordAuthenticationToken(
+                        userDetails,
+                        null,
+                        userDetails.getAuthorities()
+                );
                 SecurityContextHolder.getContext().setAuthentication(authentication);
             } catch (JWTVerificationException e) {
-                ResponseUtil.sendUnauthorizedResponse(response, e.getMessage());
-//            throw new UnauthorizedException(HttpServletResponse.SC_UNAUTHORIZED, e.getMessage());
-            } catch (UsernameNotFoundException e) { // 显式捕获用户不存在异常
-                ResponseUtil.sendUnauthorizedResponse(response,e.getMessage());
+                // 重置安全上下文，确保没有残留的认证信息
+                SecurityContextHolder.clearContext();
+                exceptionHandler.commence(request,response,new AuthenticationServiceException(e.getMessage()));
             }
         }
-
         filterChain.doFilter(request, response);
     }
 }

@@ -1,5 +1,6 @@
 package com.example.controller;
 
+import com.example.common.exceptions.BadRequestException;
 import com.example.entity.Category;
 import com.example.entity.Result;
 import com.example.service.CategoryService;
@@ -13,7 +14,8 @@ import java.util.List;
 @RestController
 @RequestMapping("/admin/category")
 public class CategoryController {
-    final CategoryService categoryService;
+
+    private final CategoryService categoryService;
 
     public CategoryController(CategoryService categoryService) {
         this.categoryService = categoryService;
@@ -26,34 +28,22 @@ public class CategoryController {
 
     @DeleteMapping(value = "/{ids}")
     public Result<?> deleteById(@PathVariable String ids) {
-        boolean result = categoryService.deleteCategoryByIds(ids);
-        if (result) {
-            return new Result<>(204,"success", "删除成功!");
-        }
-        return new Result<>(500,"error", "删除失败!");
+        categoryService.deleteCategoryByIds(ids);
+        return Result.success("删除成功", null);
     }
 
     @PostMapping(value = "/")
     public Result<?> addNewCate(Category category) {
-
         if ("".equals(category.getCateName()) || category.getCateName() == null) {
-            return new Result<>(400,"error", "请输入栏目名称!");
+            throw new BadRequestException(400,"请输入栏目名称");
         }
-
-        int result = categoryService.addCategory(category);
-
-        if (result == 1) {
-            return new Result<>(201,"success", "添加成功!");
-        }
-        return new Result<>(500,"error", "添加失败!");
+        categoryService.addCategory(category);
+        return Result.success("添加成功", null);
     }
 
     @PutMapping(value = "/")
     public Result<?> updateCate(Category category) {
-        int i = categoryService.updateCategoryById(category);
-        if (i == 1) {
-            return new Result<>(200,"success", "修改成功!");
-        }
-        return new Result<>(500,"error", "修改失败!");
+        categoryService.updateCategoryById(category);
+        return Result.success("修改成功", null);
     }
 }

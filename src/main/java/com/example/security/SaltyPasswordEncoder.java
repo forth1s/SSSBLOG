@@ -1,11 +1,11 @@
-package com.example.config;
+package com.example.security;
 
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Component;
 
 @Component
-public class MyPasswordEncoder implements PasswordEncoder {
+public class SaltyPasswordEncoder implements PasswordEncoder {
     // 密码加盐
     // 创建 BCryptPasswordEncoder 实例,用于后续的密码编码和解码操作
     private final BCryptPasswordEncoder bCryptPasswordEncoder = new BCryptPasswordEncoder();

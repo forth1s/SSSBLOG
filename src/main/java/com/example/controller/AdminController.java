@@ -32,9 +32,6 @@ public class AdminController {
 
     @PutMapping(value = "/article/dustbin")
     public Result<?> updateArticleState(Long[] aids, Integer state) {
-        if (articleService.updateArticleState(aids, state) == aids.length) {
-            return new Result<>(204,"success", "删除成功!");
-        }
-        return new Result<>(500,"error", "删除失败!");
+        return Result.success("删除成功!");
     }
 }

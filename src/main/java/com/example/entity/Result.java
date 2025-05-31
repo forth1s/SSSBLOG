@@ -1,41 +1,49 @@
 package com.example.entity;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
-import lombok.AllArgsConstructor;
-import lombok.Data;
-import lombok.NoArgsConstructor;
+import lombok.*;
 import lombok.experimental.SuperBuilder;
 
-import java.io.Serial;
-import java.io.Serializable;
-
 /**
- * 通用接口返回结果
+ * 统一响应格式
  * @param <T> 响应数据类型
  */
 @Data
-@SuperBuilder // 支持链式构建和部分字段初始化
+@SuperBuilder
 @NoArgsConstructor
 @AllArgsConstructor
-public class Result<T> implements Serializable {
-    @Serial
-    private static final long serialVersionUID = 1L;
+public class Result<T> {
+    private Integer code;    // 状态码（建议使用 HTTP 状态码）
+    private String message;  // 提示信息
+    private T data;          // 响应数据
 
-    /** 状态码：200=成功，4xx=客户端错误，5xx=服务器错误 */
-    private Integer code;
-
-    /** 状态描述：成功或错误消息 */
-    private String message;
-
-    /** 响应数据：成功时携带数据，失败时为 null */
-    private T data;
-
-    // 在 Result 类中添加
-    public String toJSONString() {
-        try {
-            return new ObjectMapper().writeValueAsString(this);
-        } catch (Exception e) {
-            throw new RuntimeException("JSON序列化失败", e);
-        }
+    // 成功响应（带数据）
+    public static <T> Result<T> success(String message, T data) {
+        return Result.<T>builder()
+                .code(200)
+                .message(message)
+                .data(data)
+                .build();
     }
+
+    // 成功响应（无数据）
+    // T 被指定为 Void 类型，表示不包含业务数据的响应结果
+    public static Result<Void> success(String message) {
+        return success(message, null);
+    }
+
+    // 错误响应（覆盖常见 HTTP 状态码）
+    public static Result<Void> error(int code, String message) {
+        return Result.<Void>builder()
+                .code(code)
+                .message(message)
+                .data(null)
+                .build();
+    }
+
+    // 常用错误快捷方法
+    public static Result<Void> badRequest(String message) { return error(400, message); }
+    public static Result<Void> unauthorized(String message) { return error(401, message); }
+    public static Result<Void> forbidden(String message) { return error(403, message); }
+    public static Result<Void> notFound(String message) { return error(404, message); }
+    public static Result<Void> serverError(String message) { return error(500, message); }
 }
